@@ -1,0 +1,3 @@
+/home/hector/Documents/SuperPowerFirmware/playground/SuperPowerFirmware/build/CMakeFiles/rebuild_cache.dir
+/home/hector/Documents/SuperPowerFirmware/playground/SuperPowerFirmware/build/CMakeFiles/edit_cache.dir
+/home/hector/Documents/SuperPowerFirmware/playground/SuperPowerFirmware/build/CMakeFiles/SuperPowerFirmware.elf.dir
