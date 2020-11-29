@@ -53,28 +53,28 @@ osThreadId_t I2CHandle;
 const osThreadAttr_t I2C_attributes = {
   .name = "I2C",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 1024 * 4
+  .stack_size = 4096 * 4
 };
 /* Definitions for RTC */
 osThreadId_t RTCHandle;
 const osThreadAttr_t RTC_attributes = {
   .name = "RTC",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 1024 * 4
+  .stack_size = 4096 * 4
 };
 /* Definitions for StateMachine */
 osThreadId_t StateMachineHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 1024 * 4
+  .stack_size = 4096 * 4
 };
 /* Definitions for VoltageMeasurem */
 osThreadId_t VoltageMeasuremHandle;
 const osThreadAttr_t VoltageMeasurem_attributes = {
   .name = "VoltageMeasurem",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 1024 * 4
+  .stack_size = 4096 * 4
 };
 /* Definitions for I2C_R_Queue */
 osMessageQueueId_t I2C_R_QueueHandle;
@@ -156,6 +156,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
 
 }
 
