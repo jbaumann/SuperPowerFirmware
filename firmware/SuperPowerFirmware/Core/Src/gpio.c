@@ -72,7 +72,16 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 2 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	/*
+	 * TODO Change the pin to the one Seth defined
+	 * TODO add protection using an I2C register
+	 */
+	if(GPIO_Pin == B1_Pin) {
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		jumpToBootloader();
+	}
+}
 /* USER CODE END 2 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
