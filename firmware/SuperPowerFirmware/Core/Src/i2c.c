@@ -22,6 +22,35 @@
 
 /* USER CODE BEGIN 0 */
 
+I2C_Config_Register_8Bit i2c_config_register_8bit = {
+	.primed                  =    0,   // 1 if the uC should control the system
+	.force_shutdown          =    0,   // 1 if the uC should shutdown the UPS if the voltage is too low (hard shutdown)
+};
+
+I2C_Status_Register_8Bit i2c_status_register_8bit = {
+	.should_shutdown         =  0x0,   // if != 0 contains the motivation for why the RPi should shutdown
+};
+
+I2C_Config_Register_16Bit i2c_config_register_16bit = {
+	.timeout                 =  120,   // the timeout for the reset, should cover shutdown and reboot
+	.bat_voltage_coefficient = 1000,   // the multiplier for the measured battery voltage * 1000, integral non-linearity
+	.bat_voltage_constant    =    0,   // the constant added to the measurement of the battery voltage * 1000, offset error
+	.ext_voltage_coefficient = 2000,   // the multiplier for the measured external voltage * 1000, integral non-linearity
+	.ext_voltage_constant    =  700,   // the constant added to the measurement of the external voltage * 1000, offset error
+	.restart_voltage         = 3900,   // the battery voltage at which the RPi will be started again
+	.warn_voltage            = 3400,   // the battery voltage at which the RPi should should down
+	.ups_shutdown_voltage    = 3200,   // the battery voltage at which a hard shutdown is executed
+	.temperature_coefficient = 1000,   // the multiplier for the measured temperature * 1000, the coefficient
+	.temperature_constant    = -270,   // the constant added to the measurement as offset
+};
+
+I2C_Status_Register_16Bit i2c_status_register_16bit = {
+	.bat_voltage             =    0,   // the battery voltage, 3.3 should be low and 3.7 high voltage
+	.ext_voltage             =    0,   // the external voltage from Pi or other source
+	.seconds                 =    0,   // seconds since last i2c access
+	.temperature             =    0,   // the on-chip temperature
+};
+
 /* USER CODE END 0 */
 
 I2C_HandleTypeDef hi2c1;
