@@ -33,7 +33,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <stdarg.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -57,7 +58,14 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 
 void jumpToBootloader();
+/*
+#define debug_print(fmt, ...) \
+            do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
+ */
 
+#define debug_print(fmt, ...) \
+        do { if (DEBUG) fprintf(stdout, "%s:%d:%s(): " fmt, __FILE__, \
+                                __LINE__, __func__, ##__VA_ARGS__); } while (0)
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

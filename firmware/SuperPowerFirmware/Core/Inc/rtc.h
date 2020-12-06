@@ -40,6 +40,7 @@ extern RTC_HandleTypeDef hrtc;
 void MX_RTC_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+char* rtc_get_register(uint8_t reg);
 
 /* USER CODE END Prototypes */
 

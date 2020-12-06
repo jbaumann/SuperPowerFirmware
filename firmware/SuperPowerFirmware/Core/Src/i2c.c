@@ -21,6 +21,10 @@
 #include "i2c.h"
 
 /* USER CODE BEGIN 0 */
+/*
+ * Our own includes have to be placed below the user code line as well
+ */
+#include "rtc.h"
 
 /*
  * Initialization of the register structures
@@ -54,6 +58,14 @@ I2C_Status_Register_16Bit i2c_status_register_16bit = {
 	.val.temperature             =    0,   // the on-chip temperature
 };
 
+
+/*
+ * Communication buffers for I2C
+ */
+uint8_t slave_receive_buffer[I2C_BUFFER_SIZE];
+uint8_t* slave_transmit_buffer;
+__IO uint8_t size_of_data;
+
 /* USER CODE END 0 */
 
 I2C_HandleTypeDef hi2c1;
@@ -65,10 +77,10 @@ void MX_I2C1_Init(void)
   hi2c1.Instance = I2C1;
   hi2c1.Init.ClockSpeed = 100000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 80;
+  hi2c1.Init.OwnAddress1 = 128;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_ENABLE;
-  hi2c1.Init.OwnAddress2 = 82;
+  hi2c1.Init.OwnAddress2 = 130;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
   hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_ENABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
@@ -143,6 +155,53 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+/*
+ * We use the primary address for the UPS and the secondary address for
+ * the RTC
+ */
+void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
+		uint16_t AddrMatchCode) {
+
+	_Bool primary_address = (hi2c->Init.OwnAddress1 == hi2c->Devaddress);
+
+	if (primary_address) {
+		// the UPS is accessed
+		debug_print("i2c addr UPS");
+	} else {
+		// the RTC is accessed
+		switch (TransferDirection) {
+		case I2C_DIRECTION_TRANSMIT:
+			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slave_receive_buffer,
+					I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
+			break;
+		case I2C_DIRECTION_RECEIVE:
+			slave_transmit_buffer = (uint8_t*)rtc_get_register(slave_receive_buffer[0]);
+			size_of_data = 6;
+			HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slave_transmit_buffer, size_of_data, I2C_LAST_FRAME);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+
+void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
+	/*
+	if(hi2c->XferCount == I2C_BUFFER_SIZE){
+		test.cmd_size = 0;
+	}else{
+		test.cmd_size = (uint8_t)(32 - hi2c->XferCount - 1);
+		memcpy(test.data, slaveReceiveBuffer+1, test.cmd_size);
+	}
+	memset(slaveReceiveBuffer, 0, 31);
+	if(test.cmd_size > 0){
+		RTC_msg_decode(test);
+	}
+	*/
+	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
+}
 
 /* USER CODE END 1 */
 

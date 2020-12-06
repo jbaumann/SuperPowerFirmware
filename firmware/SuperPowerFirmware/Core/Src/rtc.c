@@ -21,6 +21,12 @@
 #include "rtc.h"
 
 /* USER CODE BEGIN 0 */
+#include "DS3231.h"
+
+RTC_TimeTypeDef time;
+RTC_DateTypeDef date;
+char timebuffer[] = {0,0,0,0,0,0,0,0,0,0,0}; // is the initialization necessary?
+//uint16_t addr = 0;
 
 /* USER CODE END 0 */
 
@@ -106,6 +112,24 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+char* rtc_get_register(uint8_t reg){
+	char* ptr = NULL;
+	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
+	HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
+	timebuffer[0] = time.Seconds;
+	timebuffer[1] = time.Minutes;
+	timebuffer[2] = time.Hours;
+	timebuffer[3] = date.WeekDay;
+	timebuffer[4] = date.Date;
+	timebuffer[5] = date.Month;
+	timebuffer[6] = date.Year;
+	if(reg <= 6){
+		ptr = &timebuffer[(uint8_t)reg];
+	}
+	return ptr;
+}
+
 
 /* USER CODE END 1 */
 

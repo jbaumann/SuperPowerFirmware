@@ -22,16 +22,18 @@
  * - 16-bit config 0x80-0xBF
  * - 16-bit status 0xC0-0xFF
  */
-
-#define CONFIG_8BIT_OFFSET  0x00
-#define STATUS_8BIT_OFFSET  0x40
-#define CONFIG_16BIT_OFFSET 0x80
-#define STATUS_16BIT_OFFSET 0xC0
+enum i2c_consts {
+	I2C_BUFFER_SIZE = 32,
+	CONFIG_8BIT_OFFSET = 0x00,
+	STATUS_8BIT_OFFSET = 0x40,
+	CONFIG_16BIT_OFFSET = 0x80,
+	STATUS_16BIT_OFFSET = 0xC0,
+};
 
 typedef union {
 	struct _I2C_Config_Register_8Bit {
-		volatile uint8_t primed;
-		volatile uint8_t force_shutdown;
+		__IO uint8_t primed;
+		__IO uint8_t force_shutdown;
 	} __attribute__((__packed__)) val;
 	uint8_t reg[sizeof(struct _I2C_Config_Register_8Bit)];
 
@@ -39,7 +41,7 @@ typedef union {
 
 typedef union {
 	struct _I2C_Status_Register_8Bit {
-		volatile uint8_t should_shutdown;
+		__IO uint8_t should_shutdown;
 	} __attribute__((__packed__)) val;
 	uint8_t reg[sizeof(struct _I2C_Status_Register_8Bit)];
 } I2C_Status_Register_8Bit;
@@ -47,26 +49,26 @@ typedef union {
 
 typedef union {
 	struct _I2C_Config_Register_16Bit {
-		volatile uint16_t timeout;
-		volatile uint16_t bat_voltage_coefficient;
-		volatile int16_t bat_voltage_constant;
-		volatile uint16_t ext_voltage_coefficient;
-		volatile int16_t ext_voltage_constant;
-		volatile uint16_t restart_voltage;
-		volatile uint16_t warn_voltage;
-		volatile uint16_t ups_shutdown_voltage;
-		volatile uint16_t temperature_coefficient;
-		volatile int16_t temperature_constant;
+		__IO uint16_t timeout;
+		__IO uint16_t bat_voltage_coefficient;
+		__IO int16_t bat_voltage_constant;
+		__IO uint16_t ext_voltage_coefficient;
+		__IO int16_t ext_voltage_constant;
+		__IO uint16_t restart_voltage;
+		__IO uint16_t warn_voltage;
+		__IO uint16_t ups_shutdown_voltage;
+		__IO uint16_t temperature_coefficient;
+		__IO int16_t temperature_constant;
 	} __attribute__((__packed__)) val;
 	uint16_t reg[sizeof(struct _I2C_Config_Register_16Bit)];
 } I2C_Config_Register_16Bit;
 
 typedef union {
 	struct _I2C_Status_Register_16Bit {
-		volatile uint16_t bat_voltage;
-		volatile uint16_t ext_voltage;
-		volatile uint16_t seconds;
-		volatile uint16_t temperature;
+		__IO uint16_t bat_voltage;
+		__IO uint16_t ext_voltage;
+		__IO uint16_t seconds;
+		__IO uint16_t temperature;
 	} __attribute__((__packed__)) val;
 	uint16_t reg[sizeof(struct _I2C_Status_Register_16Bit)];
 } I2C_Status_Register_16Bit;

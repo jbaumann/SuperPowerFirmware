@@ -5,7 +5,10 @@
  *      Author: jbaumann
  */
 
+#include <errno.h>
+
 #include "main.h"
+#include "usart.h"
 
 /*
  * Programmatically jump into the bootloader to accept a new firmware
@@ -27,17 +30,40 @@ void jumpToBootloader() {
 }
 
 /*
- * Implement debug output using SWO
+ * Implement debug output
+ * On Windows, use Putty
+ * On Unix-based systems you can use 'screen' or something else
+ * Here an example for 'screen' on OSX:
+ * screen /dev/cu.usbmodem14103 115200,cs8
+ */
+#ifdef DEBUG
+/*
+ * Use debug_print to print debug messages, see main.h
  */
 /*
+ * Use SWO for the debug output
  * Currently not used, we are using the UART instead
-//#ifdef DEBUG
-int _write(int file, char *ptr, int len) {
-	int DataIdx;
-	for (DataIdx = 0; DataIdx < len; DataIdx++) {
-		ITM_SendChar(*ptr++);
-	}
-	return len;
+ */
+//int _write(int file, char *ptr, int len) {
+//	int DataIdx;
+//	for (DataIdx = 0; DataIdx < len; DataIdx++) {
+//		ITM_SendChar(*ptr++);
+//	}
+//	return len;
+//}
+
+/*
+ * Use the UART for debug messages
+ */
+
+int _write(int fd, char *ptr, int len) {
+	HAL_StatusTypeDef hstatus;
+
+	hstatus = HAL_UART_Transmit(&huart2, (uint8_t*) ptr, len, HAL_MAX_DELAY);
+	if (hstatus == HAL_OK)
+		return len;
+	else
+		return EIO;
 }
-//#endif // DEBUG
-*/
+#endif // DEBUG
+

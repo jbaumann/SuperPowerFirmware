@@ -28,7 +28,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,6 +94,11 @@ int main(void)
   MX_I2C1_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+  debug_print("Starting to listen to I2C\r\n");
+
+  HAL_I2C_EnableListen_IT(&hi2c1);
+
+  debug_print("Initializing and starting the FreeRTOS Kernel\r\n");
 
   /* USER CODE END 2 */
 
