@@ -22,33 +22,45 @@
  * - 16-bit config 0x80-0xBF
  * - 16-bit status 0xC0-0xFF
  */
+
+/*
+ * We use an external program to extract the Register numbers automatically.
+ * To do this we use a special marker comment _EXTRACT_I2C_REGISTER_, that
+ * must not be removed. The names of the offsets and the structs must not
+ * be changed. The pattern matching is pretty simple and relies on the naming.
+ * Otherwise the extraction no longer works.
+ * The numerical order of the OFFSET enums is important, we use it in i2c.c
+ * to identify the correct struct.
+ */
+
 enum i2c_consts {
 	I2C_BUFFER_SIZE = 32,
-	CONFIG_8BIT_OFFSET = 0x00,
-	STATUS_8BIT_OFFSET = 0x40,
-	CONFIG_16BIT_OFFSET = 0x80,
-	STATUS_16BIT_OFFSET = 0xC0,
+	CONFIG_8BIT_OFFSET = 0x00,                         // _EXTRACT_I2C_REGISTER_
+	STATUS_8BIT_OFFSET = 0x40,                         // _EXTRACT_I2C_REGISTER_
+	CONFIG_16BIT_OFFSET = 0x80,                        // _EXTRACT_I2C_REGISTER_
+	STATUS_16BIT_OFFSET = 0xC0,                        // _EXTRACT_I2C_REGISTER_
 };
 
 typedef union {
-	struct _I2C_Config_Register_8Bit {
+	struct _I2C_Config_Register_8Bit {                 // _EXTRACT_I2C_REGISTER_
 		__IO uint8_t primed;
 		__IO uint8_t force_shutdown;
-	} __attribute__((__packed__)) val;
+		__IO uint8_t enable_bootloader;
+	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint8_t reg[sizeof(struct _I2C_Config_Register_8Bit)];
 
 } I2C_Config_Register_8Bit;
 
 typedef union {
-	struct _I2C_Status_Register_8Bit {
+	struct _I2C_Status_Register_8Bit {                 // _EXTRACT_I2C_REGISTER_
 		__IO uint8_t should_shutdown;
-	} __attribute__((__packed__)) val;
+	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint8_t reg[sizeof(struct _I2C_Status_Register_8Bit)];
 } I2C_Status_Register_8Bit;
 
 
 typedef union {
-	struct _I2C_Config_Register_16Bit {
+	struct _I2C_Config_Register_16Bit {                // _EXTRACT_I2C_REGISTER_
 		__IO uint16_t timeout;
 		__IO uint16_t bat_voltage_coefficient;
 		__IO int16_t bat_voltage_constant;
@@ -59,24 +71,36 @@ typedef union {
 		__IO uint16_t ups_shutdown_voltage;
 		__IO uint16_t temperature_coefficient;
 		__IO int16_t temperature_constant;
-	} __attribute__((__packed__)) val;
-	uint16_t reg[sizeof(struct _I2C_Config_Register_16Bit)];
+	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
+	uint16_t reg[sizeof(struct _I2C_Config_Register_16Bit) / 2]; // adjust for 16 bit
 } I2C_Config_Register_16Bit;
 
 typedef union {
-	struct _I2C_Status_Register_16Bit {
+	struct _I2C_Status_Register_16Bit {                // _EXTRACT_I2C_REGISTER_
 		__IO uint16_t bat_voltage;
 		__IO uint16_t ext_voltage;
 		__IO uint16_t seconds;
 		__IO uint16_t temperature;
-	} __attribute__((__packed__)) val;
-	uint16_t reg[sizeof(struct _I2C_Status_Register_16Bit)];
+	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
+	uint16_t reg[sizeof(struct _I2C_Status_Register_16Bit) / 2]; // adjust for 16 bit
 } I2C_Status_Register_16Bit;
 
+/*
+ * The actual struct declarations
+ */
 I2C_Config_Register_8Bit i2c_config_register_8bit;
-I2C_Status_Register_8Bit i2c_statusregister_8bit;
+I2C_Status_Register_8Bit i2c_status_register_8bit;
 I2C_Config_Register_16Bit i2c_config_register_16bit;
-I2C_Status_Register_16Bit i2c_statusregister_16bit;
+I2C_Status_Register_16Bit i2c_status_register_16bit;
+
+/*
+ * Helper values allowing to check whether a register value is in bounds
+ */
+static const uint8_t i2c_config_reg_8bit_size = sizeof(i2c_config_register_8bit.reg) / sizeof(i2c_config_register_8bit.reg[0]);
+static const uint8_t i2c_status_reg_8bit_size = sizeof(i2c_status_register_8bit.reg) / sizeof(i2c_status_register_8bit.reg[0]);
+static const uint8_t i2c_config_reg_16bit_size = sizeof(i2c_config_register_16bit.reg) / sizeof(i2c_config_register_16bit.reg[0]);
+static const uint8_t i2c_status_reg_16bit_size = sizeof(i2c_status_register_16bit.reg) / sizeof(i2c_status_register_16bit.reg[0]);
+
 
 /*
  * We calculate the I2C Register number from the offset of the struct in the register range, adding
