@@ -13,90 +13,93 @@ offsets = {}
 i2c_register = {}
 function_details = {}
 
+
 def main(*args):
-	# parse the commandline arguments
-	args = parse_cmdline(args)
+    # parse the commandline arguments
+    args = parse_cmdline(args)
 
-    # check whether output file exists
-	if os.path.exists(args.output):
-		if not args.force:
-			print("File '%s' exists" % args.output)
-			print("Use option --force to overwrite")
-			quit()
+# check whether output file exists
+    if os.path.exists(args.output):
+        if not args.force:
+            print("File '%s' exists" % args.output)
+            print("Use option --force to overwrite")
+            quit()
 
-    # try to open input file
-	with open(args.input) as f:
-		input_lines = f.readlines()
+# try to open input file
+    with open(args.input) as f:
+        input_lines = f.readlines()
 
-	# parse input file
-	lines_iter = iter(input_lines)
-	for line in lines_iter:
-		match = re.search("//\s*_EXTRACT_I2C_REGISTER_", line)
-		if match:
-			# First check for offset definition
-			match = re.search(
-				"(CONFIG|STATUS|SPECIAL)_(8|16)BIT_OFFSET\s*=\s*([0-9a-fA-FxX]+)", line)
-			if match:
-				type = match.group(1).lower()
-				if not type in offsets:
-					offsets[type] = {}
-				offsets[type][match.group(2)] = int(match.group(3), 0)
+    # parse input file
+    lines_iter = iter(input_lines)
+    for line in lines_iter:
+        match = re.search("//\s*_EXTRACT_I2C_REGISTER_", line)
+        if match:
+            # First check for offset definition
+            match = re.search(
+                "(CONFIG|STATUS|SPECIAL)_(8|16)BIT_OFFSET\s*=\s*([0-9a-fA-FxX]+)", line)
+            if match:
+                type = match.group(1).lower()
+                if not type in offsets:
+                    offsets[type] = {}
+                offsets[type][match.group(2)] = int(match.group(3), 0)
 
-			# Check for beginning of a struct and extract name
-			match = re.search("struct\s+([^ \d\W]\w+)\s*{", line)
-			if match:
-				identifier = match.group(1)
-				match = re.search("(Status|Config|Special).*(8|16).*", identifier)
-				type = match.group(1).lower()
-				size = match.group(2)
+            # Check for beginning of a struct and extract name
+            match = re.search("struct\s+([^ \d\W]\w+)\s*{", line)
+            if match:
+                identifier = match.group(1)
+                match = re.search(
+                    "(Status|Config|Special).*(8|16).*", identifier)
+                type = match.group(1).lower()
+                size = match.group(2)
 
-				# now extract all registers and store them
-				reg_number = offsets[type][size]
-				next_line = next(lines_iter)
-				while not re.search("//\s*_EXTRACT_I2C_REGISTER_", next_line):
-					print(next_line)
-					match = re.search("\s+([^ \d\W]\w+)\s*;", next_line)
-					if match:
-						reg_name = match.group(1)
-						i2c_register[reg_number] = reg_name
-						getter = type == "config" or type == "status"
-						function_details[reg_number] = {"getter": getter, "setter": type == "config", "size": size}
-						reg_number += 1
-					next_line = next(lines_iter)
+                # now extract all registers and store them
+                reg_number = offsets[type][size]
+                next_line = next(lines_iter)
+                while not re.search("//\s*_EXTRACT_I2C_REGISTER_", next_line):
+                    match = re.search("\s+([^ \d\W]\w+)\s*;", next_line)
+                    if match:
+                        reg_name = match.group(1)
+                        i2c_register[reg_number] = reg_name
+                        getter = type == "config" or type == "status"
+                        function_details[reg_number] = {
+                            "getter": getter, "setter": type == "config", "size": size}
+                        reg_number += 1
+                    next_line = next(lines_iter)
 
-	# write output file
-	file = open (args.output, "w")
+    # write output file
+    file = open(args.output, "w")
 
-	# Write the import statements and class definition to file
-	print(class_preamble, file=file)
+    # Write the import statements and class definition to file
+    print(class_preamble, file=file)
 
-	# Write the constants to file
-	for register in sorted(i2c_register):
-		print("    %s = %#2.2x" % (i2c_register[register].upper(), register), file=file)
-	# Write the internal attributes and methods to file
-	print(class_functions, file=file)
+    # Write the constants to file
+    for register in sorted(i2c_register):
+        print("    %s = %#2.2x" %
+              (i2c_register[register].upper(), register), file=file)
+    # Write the internal attributes and methods to file
+    print(class_functions, file=file)
 
-	# Generate the member functions for each register.
-	# For config registers a set()- and a get()-method is generated,
-	# for status registers only a get()-method is generated.
-	for register in sorted(i2c_register):
-		name = i2c_register[register]
-		if function_details[register]["getter"]:
-			print(get_method %
-		      (name, function_details[register]["size"], name.upper()), file=file)
-		if function_details[register]["setter"]:
-			print(set_method %
-			      (name, function_details[register]["size"], name.upper()), file=file)
+    # Generate the member functions for each register.
+    # For config registers a set()- and a get()-method is generated,
+    # for status registers only a get()-method is generated.
+    for register in sorted(i2c_register):
+        name = i2c_register[register]
+        if function_details[register]["getter"]:
+            print(get_method %
+                  (name, function_details[register]["size"], name.upper()), file=file)
+        if function_details[register]["setter"]:
+            print(set_method %
+                  (name, function_details[register]["size"], name.upper()), file=file)
 
+    # Cleanup
+    file.close()
 
-	# Cleanup
-	file.close()
 
 def parse_cmdline(args: Tuple[Any]) -> Namespace:
     arg_parser = ArgumentParser(description='Extract I2C Register Definitions')
     arg_parser.add_argument('-i', '--input', metavar='file', required=False,
                             default=_default_input,
-							help='full path and name of the input file')
+                            help='full path and name of the input file')
     arg_parser.add_argument('-o', '--output', metavar='file', required=False,
                             default=_default_output,
                             help='full path and name of the output file')
@@ -217,9 +220,9 @@ class_functions = """
             bus = smbus.SMBus(self._bus_number)
             time.sleep(self._time_const)
             try:
-                read = bus.read_i2c_block_data(self._address, self.REG_VERSION, 5)
+                read = bus.read_i2c_block_data(self._address, self.VERSION, 5)
                 bus.close()
-                if read[4] == self.calcCRC(self.REG_VERSION, read, 4):
+                if read[4] == self.calcCRC(self.VERSION, read, 4):
                     major = read[2]
                     minor = read[1]
                     patch = read[0]
