@@ -26,7 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "queue_handles.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

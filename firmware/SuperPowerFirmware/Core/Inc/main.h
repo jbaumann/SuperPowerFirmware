@@ -47,15 +47,6 @@ enum VersionNumber {
 	MAJOR = 1, MINOR = 0, PATCH = 7,
 };
 
-// TODO move to more appropriate place
-typedef struct {                                // object data type
-	union {
-		uint8_t small_val;
-		uint16_t big_val;
-	};
-	uint32_t id;
-} I2C_QueueMsg_t;
-
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

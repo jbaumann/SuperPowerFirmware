@@ -129,9 +129,9 @@ class SuperPower:
             bus = smbus.SMBus(self._bus_number)
             time.sleep(self._time_const)
             try:
-                read = bus.read_i2c_block_data(self._address, self.REG_VERSION, 5)
+                read = bus.read_i2c_block_data(self._address, self.VERSION, 4)
                 bus.close()
-                if read[4] == self.calcCRC(self.REG_VERSION, read, 4):
+                if read[3] == self.calcCRC(self.VERSION, read, 3):
                     major = read[2]
                     minor = read[1]
                     patch = read[0]

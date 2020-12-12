@@ -278,7 +278,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		}
 		if(register_number >= (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 			switch(register_number) {
-			case 0xF0:
+			case i2creg_version:
 				len = 3;
 			default:
 				break;
