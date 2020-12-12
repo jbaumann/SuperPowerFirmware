@@ -29,6 +29,8 @@ class SuperPower:
     EXT_VOLTAGE = 0xc1
     SECONDS = 0xc2
     TEMPERATURE = 0xc3
+    VERSION = 0xf0
+    INIT_EEPROM = 0xf1
 
     _POLYNOME = 0x31
 

@@ -40,6 +40,22 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+/*
+ * Our version number - used by the daemon to ensure that the major number is equal between firmware and daemon
+ */
+enum VersionNumber {
+	MAJOR = 1, MINOR = 0, PATCH = 7,
+};
+
+// TODO move to more appropriate place
+typedef struct {                                // object data type
+	union {
+		uint8_t small_val;
+		uint16_t big_val;
+	};
+	uint32_t id;
+} I2C_QueueMsg_t;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -82,8 +98,6 @@ void jumpToBootloader();
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
-#define SWO_Pin GPIO_PIN_3
-#define SWO_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

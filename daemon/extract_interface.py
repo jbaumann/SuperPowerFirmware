@@ -35,7 +35,7 @@ def main(*args):
 		if match:
 			# First check for offset definition
 			match = re.search(
-				"(CONFIG|STATUS)_(8|16)BIT_OFFSET\s*=\s*([0-9a-fA-FxX]+)", line)
+				"(CONFIG|STATUS|SPECIAL)_(8|16)BIT_OFFSET\s*=\s*([0-9a-fA-FxX]+)", line)
 			if match:
 				type = match.group(1).lower()
 				if not type in offsets:
@@ -46,7 +46,7 @@ def main(*args):
 			match = re.search("struct\s+([^ \d\W]\w+)\s*{", line)
 			if match:
 				identifier = match.group(1)
-				match = re.search("(Status|Config).*(8|16).*", identifier)
+				match = re.search("(Status|Config|Special).*(8|16).*", identifier)
 				type = match.group(1).lower()
 				size = match.group(2)
 
@@ -54,12 +54,16 @@ def main(*args):
 				reg_number = offsets[type][size]
 				next_line = next(lines_iter)
 				while not re.search("//\s*_EXTRACT_I2C_REGISTER_", next_line):
+					print(next_line)
 					match = re.search("\s+([^ \d\W]\w+)\s*;", next_line)
-					reg_name = match.group(1)
-					i2c_register[reg_number] = reg_name
-					function_details[reg_number] = { "setter" : type == "config", "size" : size}
-					reg_number += 1
+					if match:
+						reg_name = match.group(1)
+						i2c_register[reg_number] = reg_name
+						getter = type == "config" or type == "status"
+						function_details[reg_number] = {"getter": getter, "setter": type == "config", "size": size}
+						reg_number += 1
 					next_line = next(lines_iter)
+
 	# write output file
 	file = open (args.output, "w")
 
@@ -77,7 +81,8 @@ def main(*args):
 	# for status registers only a get()-method is generated.
 	for register in sorted(i2c_register):
 		name = i2c_register[register]
-		print(get_method %
+		if function_details[register]["getter"]:
+			print(get_method %
 		      (name, function_details[register]["size"], name.upper()), file=file)
 		if function_details[register]["setter"]:
 			print(set_method %

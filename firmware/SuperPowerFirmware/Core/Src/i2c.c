@@ -28,6 +28,8 @@
 
 #include "rtc.h"
 #include "crc_8bit.h"
+#include "cmsis_os.h"
+#include "queue_handles.h"
 
 /*
  * Initialization of the register structures
@@ -69,6 +71,11 @@ I2C_Status_Register_16Bit i2c_status_register_16bit = {
 uint8_t i2c1_buffer[I2C_BUFFER_SIZE + 1]; // worst case size including the crc
 
 _Bool i2c_in_progress = false;
+
+/*
+ * We use 24 bit for the prog_version, this should be enough.
+ */
+uint32_t prog_version = (MAJOR << 16) | (MINOR << 8) | PATCH;
 
 /* USER CODE END 0 */
 
@@ -167,23 +174,23 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
  *
  *  register_number the register value sent by the RPi
  */
-void i2c_writeRegisterToBuffer(uint8_t register_number) {
+void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
 	// identify the addressed struct and copy the value
-	if (register_number < STATUS_8BIT_OFFSET) {
+	if (register_number < (enum I2C_Register)STATUS_8BIT_OFFSET) {
 
 		// access to the CONFIG_8BIT struct
 		uint8_t reg = register_number - CONFIG_8BIT_OFFSET;
 		if(reg < i2c_config_reg_8bit_size) {
 			i2c1_buffer[0] = i2c_config_register_8bit.reg[reg];
 		}
-	} else if (register_number < CONFIG_16BIT_OFFSET) {
+	} else if (register_number < (enum I2C_Register)CONFIG_16BIT_OFFSET) {
 
 		// access to the STATUS_8BIT struct
 		uint8_t reg = register_number - STATUS_8BIT_OFFSET;
 		if(reg < i2c_status_reg_8bit_size) {
 			i2c1_buffer[0] = i2c_status_register_8bit.reg[reg];
 		}
-	} else if (register_number < STATUS_16BIT_OFFSET) {
+	} else if (register_number < (enum I2C_Register)STATUS_16BIT_OFFSET) {
 
 		// access to the CONFIG_16BIT struct
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
@@ -191,13 +198,21 @@ void i2c_writeRegisterToBuffer(uint8_t register_number) {
 			uint16_t *val = (uint16_t*) i2c1_buffer;
 			val[0] = i2c_config_register_16bit.reg[reg];
 		}
-	} else {
+	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 
 		// access to the STATUS_16BIT struct
 		uint8_t reg = register_number - STATUS_16BIT_OFFSET;
 		if(reg < i2c_status_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) i2c1_buffer;
 			val[0] = i2c_status_register_16bit.reg[reg];
+		}
+	} else {
+		// access to the SPECIAL_16BIT struct
+
+		// Special register requesting the version number
+		if(register_number == i2creg_version) {
+			uint32_t *val = (uint32_t*) i2c1_buffer;
+			val[0] = prog_version;
 		}
 	}
 }
@@ -227,9 +242,19 @@ void i2c_writeBufferToRegister(uint8_t register_number) {
 		if(reg < i2c_config_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) (i2c1_buffer + 1); // reg is [0]
 			i2c_config_register_16bit.reg[reg] = val[0];
+
+			I2C_QueueMsg_t msg;
+			msg.id = register_number;
+			msg.big_val = val[0];
+
+			osMessageQueuePut(I2C_R_QueueHandle, &msg, 0, 0);
+
 		}
-	} else {
+	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 		/* the RPi does not set values in the STATUS_16BIT struct */
+
+	} else {
+		// access to the SPECIAL_16BIT struct
 	}
 }
 
@@ -241,17 +266,25 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		uint16_t AddrMatchCode) {
 
 	_Bool primary_address = (hi2c->Init.OwnAddress1 == AddrMatchCode);
-	uint8_t register_number = hi2c->Instance->DR;
+	enum I2C_Register register_number = hi2c->Instance->DR;
 
 	if (primary_address) {
 		// the UPS is accessed
 
 		uint8_t len = 1; // 8bit by default
-		if(register_number >= CONFIG_16BIT_OFFSET) {
+		if(register_number >= (enum I2C_Register)CONFIG_16BIT_OFFSET) {
 			// We have a 16bit register
 			len = 2;
 		}
-
+		if(register_number >= (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
+			switch(register_number) {
+			case 0xF0:
+				len = 3;
+			default:
+				break;
+			}
+		}
+		// We need the sequential I2C methods
 		switch (TransferDirection) {
 		case I2C_DIRECTION_TRANSMIT:
 			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, len + 2, I2C_FIRST_FRAME); //len + reg + crc

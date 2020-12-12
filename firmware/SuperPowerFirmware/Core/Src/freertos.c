@@ -172,13 +172,21 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_I2C_Task */
 void I2C_Task(void *argument)
 {
-  /* USER CODE BEGIN I2C_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END I2C_Task */
+	/* USER CODE BEGIN I2C_Task */
+	I2C_QueueMsg_t msg;
+	osStatus_t status;
+
+
+	/* Infinite loop */
+	for (;;) {
+		status = osMessageQueueGet(I2C_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
+		if (status == osOK) {
+			printf("Hello receive, ");
+			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		}
+	}
+	osDelay(1);
+		/* USER CODE END I2C_Task */
 }
 
 /* USER CODE BEGIN Header_RTC_Task */

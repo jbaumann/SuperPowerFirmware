@@ -39,6 +39,7 @@ enum i2c_consts {
 	STATUS_8BIT_OFFSET = 0x40,                         // _EXTRACT_I2C_REGISTER_
 	CONFIG_16BIT_OFFSET = 0x80,                        // _EXTRACT_I2C_REGISTER_
 	STATUS_16BIT_OFFSET = 0xC0,                        // _EXTRACT_I2C_REGISTER_
+	SPECIAL_16BIT_OFFSET = 0xF0,                       // _EXTRACT_I2C_REGISTER_
 };
 
 typedef union {
@@ -86,7 +87,22 @@ typedef union {
 } I2C_Status_Register_16Bit;
 
 /*
- * The actual struct declarations
+ * The following struct describes special registers of _arbitrary_ size.
+ * The name is due to the limitations of the parsing program
+ * extract_interface.py
+ * The struct will never be instantiated, the transmission size has
+ * to be coded by hand. See function HAL_I2C_AddrCallback()
+ */
+typedef union {
+	struct _I2C_Special_Register_16Bit {               // _EXTRACT_I2C_REGISTER_
+		__IO uint8_t version;
+		__IO uint8_t init_eeprom;
+	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
+	uint16_t reg[sizeof(struct _I2C_Special_Register_16Bit)];
+} I2C_Special_Register_16Bit;
+
+/*
+ * The actual struct declarations. Special registers are _not_ instantiated
  */
 I2C_Config_Register_8Bit i2c_config_register_8bit;
 I2C_Status_Register_8Bit i2c_status_register_8bit;
@@ -100,6 +116,7 @@ static const uint8_t i2c_config_reg_8bit_size = sizeof(i2c_config_register_8bit.
 static const uint8_t i2c_status_reg_8bit_size = sizeof(i2c_status_register_8bit.reg) / sizeof(i2c_status_register_8bit.reg[0]);
 static const uint8_t i2c_config_reg_16bit_size = sizeof(i2c_config_register_16bit.reg) / sizeof(i2c_config_register_16bit.reg[0]);
 static const uint8_t i2c_status_reg_16bit_size = sizeof(i2c_status_register_16bit.reg) / sizeof(i2c_status_register_16bit.reg[0]);
+static const uint8_t i2c_special_reg_16bit_size = sizeof(I2C_Special_Register_16Bit);
 
 
 /*
@@ -132,6 +149,10 @@ enum I2C_Register {
 	i2creg_ext_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.ext_voltage)/2,
 	i2creg_seconds                 = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.seconds)/2,
 	i2creg_temperature             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.temperature)/2,
+	// I2C Special Registers
+	i2creg_version                 = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.version),
+	i2creg_init_eeprom             = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.init_eeprom),
+
 }__attribute__ ((__packed__));            // force smallest size i.e., uint_8t (GCC syntax)
 
 
