@@ -37,7 +37,7 @@
 I2C_Config_Register_8Bit i2c_config_register_8bit = {
 	.val.primed                  =    0,   // 1 if the uC should control the system
 	.val.force_shutdown          =    0,   // 1 if the uC should shutdown the UPS if the voltage is too low (hard shutdown)
-	.val.enable_bootloader           =    0,   // 1 if the bootloader is enabled
+	.val.enable_bootloader       =    0,   // 1 if the bootloader is enabled
 };
 
 I2C_Status_Register_8Bit i2c_status_register_8bit = {
