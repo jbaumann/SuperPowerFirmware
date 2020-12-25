@@ -15,20 +15,17 @@ class SuperPower:
     FORCE_SHUTDOWN = 0x01
     ENABLE_BOOTLOADER = 0x02
     SHOULD_SHUTDOWN = 0x40
+    CHARGER_STATUS = 0x41
     TIMEOUT = 0x80
-    BAT_VOLTAGE_COEFFICIENT = 0x81
-    BAT_VOLTAGE_CONSTANT = 0x82
-    EXT_VOLTAGE_COEFFICIENT = 0x83
-    EXT_VOLTAGE_CONSTANT = 0x84
-    RESTART_VOLTAGE = 0x85
-    WARN_VOLTAGE = 0x86
-    UPS_SHUTDOWN_VOLTAGE = 0x87
-    TEMPERATURE_COEFFICIENT = 0x88
-    TEMPERATURE_CONSTANT = 0x89
+    RESTART_VOLTAGE = 0x81
+    WARN_VOLTAGE = 0x82
+    UPS_SHUTDOWN_VOLTAGE = 0x83
     BAT_VOLTAGE = 0xc0
-    EXT_VOLTAGE = 0xc1
-    SECONDS = 0xc2
-    TEMPERATURE = 0xc3
+    BAT_CURRENT = 0xc1
+    VBUS_VOLTAGE = 0xc2
+    EXT_VOLTAGE = 0xc3
+    SECONDS = 0xc4
+    TEMPERATURE = 0xc5
     VERSION = 0xf0
     INIT_EEPROM = 0xf1
 
@@ -180,35 +177,14 @@ class SuperPower:
     def get_should_shutdown(self):
         return self.get_8bit_value(self.SHOULD_SHUTDOWN)
 
+    def get_charger_status(self):
+        return self.get_8bit_value(self.CHARGER_STATUS)
+
     def get_timeout(self):
         return self.get_16bit_value(self.TIMEOUT)
 
     def set_timeout(self, value):
         return self.set_16bit_value(self.TIMEOUT, value)
-
-    def get_bat_voltage_coefficient(self):
-        return self.get_16bit_value(self.BAT_VOLTAGE_COEFFICIENT)
-
-    def set_bat_voltage_coefficient(self, value):
-        return self.set_16bit_value(self.BAT_VOLTAGE_COEFFICIENT, value)
-
-    def get_bat_voltage_constant(self):
-        return self.get_16bit_value(self.BAT_VOLTAGE_CONSTANT)
-
-    def set_bat_voltage_constant(self, value):
-        return self.set_16bit_value(self.BAT_VOLTAGE_CONSTANT, value)
-
-    def get_ext_voltage_coefficient(self):
-        return self.get_16bit_value(self.EXT_VOLTAGE_COEFFICIENT)
-
-    def set_ext_voltage_coefficient(self, value):
-        return self.set_16bit_value(self.EXT_VOLTAGE_COEFFICIENT, value)
-
-    def get_ext_voltage_constant(self):
-        return self.get_16bit_value(self.EXT_VOLTAGE_CONSTANT)
-
-    def set_ext_voltage_constant(self, value):
-        return self.set_16bit_value(self.EXT_VOLTAGE_CONSTANT, value)
 
     def get_restart_voltage(self):
         return self.get_16bit_value(self.RESTART_VOLTAGE)
@@ -228,20 +204,14 @@ class SuperPower:
     def set_ups_shutdown_voltage(self, value):
         return self.set_16bit_value(self.UPS_SHUTDOWN_VOLTAGE, value)
 
-    def get_temperature_coefficient(self):
-        return self.get_16bit_value(self.TEMPERATURE_COEFFICIENT)
-
-    def set_temperature_coefficient(self, value):
-        return self.set_16bit_value(self.TEMPERATURE_COEFFICIENT, value)
-
-    def get_temperature_constant(self):
-        return self.get_16bit_value(self.TEMPERATURE_CONSTANT)
-
-    def set_temperature_constant(self, value):
-        return self.set_16bit_value(self.TEMPERATURE_CONSTANT, value)
-
     def get_bat_voltage(self):
         return self.get_16bit_value(self.BAT_VOLTAGE)
+
+    def get_bat_current(self):
+        return self.get_16bit_value(self.BAT_CURRENT)
+
+    def get_vbus_voltage(self):
+        return self.get_16bit_value(self.VBUS_VOLTAGE)
 
     def get_ext_voltage(self):
         return self.get_16bit_value(self.EXT_VOLTAGE)
