@@ -21,7 +21,7 @@ class SuperPower:
     WARN_VOLTAGE = 0x82
     UPS_SHUTDOWN_VOLTAGE = 0x83
     BAT_VOLTAGE = 0xc0
-    BAT_CURRENT = 0xc1
+    CHARGE_CURRENT = 0xc1
     VBUS_VOLTAGE = 0xc2
     EXT_VOLTAGE = 0xc3
     SECONDS = 0xc4
@@ -207,8 +207,8 @@ class SuperPower:
     def get_bat_voltage(self):
         return self.get_16bit_value(self.BAT_VOLTAGE)
 
-    def get_bat_current(self):
-        return self.get_16bit_value(self.BAT_CURRENT)
+    def get_charge_current(self):
+        return self.get_16bit_value(self.CHARGE_CURRENT)
 
     def get_vbus_voltage(self):
         return self.get_16bit_value(self.VBUS_VOLTAGE)
