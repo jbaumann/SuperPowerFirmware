@@ -20,8 +20,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "adc.h"
 #include "i2c.h"
 #include "rtc.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -91,12 +93,15 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_RTC_Init();
+  MX_ADC1_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
-  debug_print("Starting to listen to I2C\r\n");
 
-  HAL_I2C_EnableListen_IT(&hi2c1);
+  HAL_TIM_Base_Start_IT(&htim5);
 
-  debug_print("Initializing and starting the FreeRTOS Kernel\r\n");
+  // I2C Enable Listen will be turned on by the FreeRTos task reading the charger information
+  //HAL_I2C_EnableListen_IT(&hi2c1);
+
 
   /* USER CODE END 2 */
 
@@ -191,7 +196,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  if (htim->Instance == TIM5) {
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		HAL_ADCEx_InjectedStart_IT(&hadc1);
+  }
   /* USER CODE END Callback 1 */
 }
 
