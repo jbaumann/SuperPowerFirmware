@@ -29,7 +29,7 @@
 #include "queue_handles.h"
 #include "adc.h"
 #include "i2c.h"
-#include "i2c_register.h"
+#include "ch_bq25895.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -97,10 +97,6 @@ const osMessageQueueAttr_t Statemachine_R_Queue_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
-uint16_t ch_convert_batv(uint8_t raw);
-uint16_t ch_convert_vbus(uint8_t raw);
-uint16_t ch_convert_charge_current(uint8_t raw);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -238,11 +234,8 @@ void StateMachine_Task(void *argument)
 * @param argument: Not used
 * @retval None
 */
-// TODO correct size
-#define CH_BUF_SIZE 8
+#define CH_BUF_SIZE 2
 uint8_t ch_buf[CH_BUF_SIZE];
-static const uint16_t i2c_master_timeout =  1000;  // timeout in milliseconds
-static const uint16_t bq_update_interval = 10000;  // update interval for the charger in milliseconds
 
 /* USER CODE END Header_VoltageMeasurement_Task */
 void VoltageMeasurement_Task(void *argument)
@@ -250,82 +243,72 @@ void VoltageMeasurement_Task(void *argument)
   /* USER CODE BEGIN VoltageMeasurement_Task */
 	HAL_StatusTypeDef ret_val;
 
+
 	// on first execution
+	ch_buf[0] = CH_WATCHDOG;
+	ch_buf[1] = CH_WATCHDOG_STOP; // stop watchdog timer
+	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
 
-	//	BYTE_WATCHDOG_STOP = 0b10001101 #Stop Watchdog timer
-	//	bus.write_byte_data(BQ25895_ADDRESS, REG_WATCHDOG, BYTE_WATCHDOG_STOP)
+	ch_buf[0] = CH_ILIM;
+	ch_buf[1] = CH_ILIM_MAX; // 3.25A input current limit
+	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
 
-	//	BYTE_ILIM 		= 0b01111111 #3.25A input current limit
-	//	bus.write_byte_data(BQ25895_ADDRESS, REG_ILIM, BYTE_ILIM)
+	ch_buf[0] = CH_ICHG;
+	ch_buf[1] = CH_ICHG_MAX; // 5.056A charging current limit
+	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
 
-	//	BYTE_ICHG 		= 0b01111111 #.5A charging current limit
-	//	bus.write_byte_data(BQ25895_ADDRESS, REG_ICHG, BYTE_ICHG)
-
-	//	BYTE_BATFET 	= 0b01001000 #delay before battery == disconnected
-	//	bus.write_byte_data(BQ25895_ADDRESS, REG_BATFET, BYTE_BATFET)
-
-	//BYTE_CONV_ADC_START = 0b10011101
-	//BYTE_CONV_ADC_STOP  = 0b00011101
+	ch_buf[0] = CH_BATFET;
+	ch_buf[1] = CH_BATFET_DELAY; // delay before battery is disconnected
+	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
 
 	/* Infinite loop */
 	for (;;) {
-
-//		HAL_ADCEx_InjectedStart_IT(&hadc1);
-
-
 		// Turn the I2C slave off...
 		ret_val = HAL_I2C_DisableListen_IT(&hi2c1);
 
-		if(ret_val == HAL_OK) {
+		if(hi2c1.State == HAL_I2C_STATE_READY) {
 			// start ADC conversion
 			ch_buf[0] = CH_CONV_ADC;
-			ch_buf[1] = 0b10011101;
-			ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, i2c_master_timeout);
+			ch_buf[1] = CH_CONV_ADC_START;
+			ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
 			if(ret_val == HAL_OK) {
-				// osDelay(1200);
+				osDelay(ch_conv_delay); // time for conversion, see 8.2.8 Battery Monitor on p.24
 
 				// Read values from charger
 				ch_buf[0] = CH_STATUS;
-				ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 1, i2c_master_timeout);
+				ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 1, ch_i2c_master_timeout);
 				if(ret_val == HAL_OK) {
-					ret_val = HAL_I2C_Master_Receive(&hi2c1, CHARGER_ADDRESS, ch_buf, CH_BUF_SIZE, i2c_master_timeout);
+					ret_val = HAL_I2C_Master_Receive(&hi2c1, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register), ch_i2c_master_timeout);
 					if(ret_val == HAL_OK) {
-						// 0 + Status
-						// 1 - Faults
-						// 2 - VINDPM Threshold
-						// 3 + Battery Voltage
-						// 4 - System Voltage
-						// 5 - TS Voltage (Battery Sensing Thermistor - Temperature Sensing)
-						// 6 + VBus-Voltage
-						// 7 + Charge Current
-
-						i2c_status_register_8bit.val.charger_status = ch_buf[0];
-						uint16_t batv = ch_convert_batv(ch_buf[3]);
+						i2c_status_register_8bit.val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
+						uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
 						i2c_status_register_16bit.val.bat_voltage = batv;
-						uint16_t vbus_v = ch_convert_vbus(ch_buf[6]);
+						uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
 						i2c_status_register_16bit.val.vbus_voltage = vbus_v;
-						uint16_t ch_current = ch_convert_charge_current(ch_buf[7]);
-						i2c_status_register_16bit.val.bat_current = ch_current;
+						uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
+						i2c_status_register_16bit.val.charge_current = ch_current;
 					} else if(ret_val == HAL_ERROR) { // Master Receive
 						// TODO check the results
 					}
 				} else if(ret_val == HAL_ERROR) { // Master Transmit Address
-					// TODO check the results
+					// This should never happen because we just did a successful
+					// transmit a second ago. We have to ignore this and hope for
+					// the next time.
 				}
 			} else if(ret_val == HAL_ERROR) { // Master_Transmit ADC
-				// TODO check the results
+				// cannot transmit data to the charger, means the device
+				// is not reachable. We simply ignore this and wait for
+				// it to come online.
 			}
 		}
-
 
 		// ... and turn it on again
 		// We don't need to check the return value because it
 		// can only be HAL_OK or HAL_BUSY, either way I2C is
-		// listening after the call
+		// listening after this call
 		HAL_I2C_EnableListen_IT(&hi2c1);
 
-
-		osDelay(bq_update_interval);
+		osDelay(ch_update_interval);
 
 	}
   /* USER CODE END VoltageMeasurement_Task */
@@ -333,96 +316,6 @@ void VoltageMeasurement_Task(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-
-/*
- * Table 22. REG0E
- * ADC conversion of Battery Voltage (VBAT)
- * Offset: 2.304V
- * Range: 2.304V (0000000) – 4.848V (1111111)
- * Default: 2.304V (0000000)
- *
- * BATV[6] 1280mV
- * BATV[5]  640mV
- * BATV[4]  320mV
- * BATV[3]  160mV
- * BATV[2]   80mV
- * BATV[1]   40mV
- * BATV[0]   20mV
- */
-uint16_t ch_convert_batv(uint8_t raw) {
-	uint16_t result = 2304;
-	uint16_t bit_val = 20;
-	for(int i = 0; i < 7; i++) {
-		if(raw & 0x1) {
-			result += bit_val;
-		}
-		bit_val <<= 1;
-		raw >>= 1;
-	}
-	return result;
-}
-
-
-/*
- * Table 25 REG11
- * ADC conversion of VBUS voltage (VBUS)
- * Offset: 2.6V
- * Default: 2.6V (0000000)
- *
- *  VBUS[7] VBUS_GD - 0 no VBUS - 1 VBUS attached
- * VBUSV[6] 6400mV
- * VBUSV[5] 3200mV
- * VBUSV[4] 1600mV
- * VBUSV[3]  800mV
- * VBUSV[2]  400mV
- * VBUSV[1]  200mV
- * VBUSV[0]  100mV
- */
-
-uint16_t ch_convert_vbus(uint8_t raw) {
-	uint16_t result = 2600;
-	if(raw & 0b10000000) { // VBUS good
-		uint16_t bit_val = 100;
-		for(int i = 0; i < 7; i++) {
-			if(raw & 0x1) {
-				result += bit_val;
-			}
-			bit_val <<= 1;
-			raw >>= 1;
-		}
-		return result;
-	}
-	return 0;
-}
-
-/*
- * Table 26 REG12
- * ADC conversion of Charge Current (IBAT) when VBAT > VBATSHORT
- * Offset: 0mA
- * Range 0mA (0000000) – 6350mA (1111111) Default: 0mA (0000000)
- * Note: This register returns 0000000 for VBAT < VBATSHORT
- * ICHGR[6] 3200mA
- * ICHGR[5] 1600mA
- * ICHGR[4]  800mA
- * ICHGR[3]  400mA
- * ICHGR[2]  200mA
- * ICHGR[1]  100mA
- * ICHGR[0]   50mA
- */
-
-uint16_t ch_convert_charge_current(uint8_t raw) {
-	uint16_t result = 0;
-	uint16_t bit_val = 50;
-	for(int i = 0; i < 7; i++) {
-		if(raw & 0x1) {
-			result += bit_val;
-		}
-		bit_val <<= 1;
-		raw >>= 1;
-	}
-
-	return result;
-}
 
 
 /* USER CODE END Application */

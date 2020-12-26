@@ -99,7 +99,8 @@ int main(void)
 
   HAL_TIM_Base_Start_IT(&htim5);
 
-  HAL_I2C_EnableListen_IT(&hi2c1);
+  // I2C Enable Listen will be turned on by the FreeRTos task reading the charger information
+  //HAL_I2C_EnableListen_IT(&hi2c1);
 
 
   /* USER CODE END 2 */

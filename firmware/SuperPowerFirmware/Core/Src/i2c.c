@@ -54,7 +54,7 @@ I2C_Config_Register_16Bit i2c_config_register_16bit = {
 
 I2C_Status_Register_16Bit i2c_status_register_16bit = {
 	.val.bat_voltage             =    0,   // the battery voltage, 3.3 should be low and 3.7 high voltage
-	.val.bat_current             =    0,   // the battery charge current
+	.val.charge_current          =    0,   // the battery charge current
 	.val.vbus_voltage            =    0,   // the primary power voltage
 	.val.ext_voltage             =    0,   // external voltage measured on PA0
 	.val.seconds                 =    0,   // seconds since last i2c access

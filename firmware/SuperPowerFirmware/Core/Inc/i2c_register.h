@@ -74,7 +74,7 @@ typedef union {
 typedef union {
 	struct _I2C_Status_Register_16Bit {                // _EXTRACT_I2C_REGISTER_
 		__IO uint16_t bat_voltage;
-		__IO uint16_t bat_current;
+		__IO uint16_t charge_current;
 		__IO uint16_t vbus_voltage;
 		__IO uint16_t ext_voltage;
 		__IO uint16_t seconds;
@@ -138,7 +138,7 @@ enum I2C_Register {
 	i2creg_ups_shutdown_voltage    = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.ups_shutdown_voltage)/2,
 	// I2C_Status_Register_16Bit
 	i2creg_bat_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.bat_voltage)/2,
-	i2creg_bat_current             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.bat_current)/2,
+	i2creg_charge_current          = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.charge_current)/2,
 	i2creg_vbus_voltage            = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.vbus_voltage)/2,
 	i2creg_ext_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.ext_voltage)/2,
 	i2creg_seconds                 = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.seconds)/2,
@@ -148,18 +148,6 @@ enum I2C_Register {
 	i2creg_init_eeprom             = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.init_eeprom),
 
 }__attribute__ ((__packed__));            // force smallest size i.e., uint_8t (GCC syntax)
-
-/*
- * Here follow the definitions for the TI BQ25895
- */
-static const uint8_t CHARGER_ADDRESS = 0x6A << 1; // has to be shifted according to documentation
-static const uint8_t CH_ILIM         = 0x00;
-static const uint8_t CH_CONV_ADC     = 0x02;
-static const uint8_t CH_ICHG         = 0x04;
-static const uint8_t CH_WATCHDOG     = 0x07;
-static const uint8_t CH_BATFET       = 0x09;
-static const uint8_t CH_STATUS       = 0x0B;
-static const uint8_t CH_BATV         = 0x0E;
 
 
 #endif /* INC_I2C_REGISTER_H_ */
