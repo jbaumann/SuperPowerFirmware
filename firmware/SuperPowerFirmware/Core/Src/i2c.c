@@ -30,6 +30,7 @@
 #include "crc_8bit.h"
 #include "cmsis_os.h"
 #include "queue_handles.h"
+#include "ch_bq25895.h"
 
 /*
  * Initialization of the register structures
@@ -342,6 +343,28 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	if(crc == i2c1_buffer[len + 1]) {
 		i2c_writeBufferToRegister(register_number);
 	}
+
+}
+
+/*
+ * This callback is called when the data from the charger
+ * has been successfully received. We copy the relevant
+ * information and turn the listen mode back on
+ */
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+	i2c_status_register_8bit.val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
+	uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
+	i2c_status_register_16bit.val.bat_voltage = batv;
+	uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
+	i2c_status_register_16bit.val.vbus_voltage = vbus_v;
+	uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
+	i2c_status_register_16bit.val.charge_current = ch_current;
+
+	// Turn the slave functionality on again
+	// We don't need to check the return value because it
+	// can only be HAL_OK or HAL_BUSY, either way I2C is
+	// listening after this call
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 
