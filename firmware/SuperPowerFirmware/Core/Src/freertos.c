@@ -234,8 +234,6 @@ void StateMachine_Task(void *argument)
 * @param argument: Not used
 * @retval None
 */
-#define CH_BUF_SIZE 2
-uint8_t ch_buf[CH_BUF_SIZE];
 
 /* USER CODE END Header_VoltageMeasurement_Task */
 void VoltageMeasurement_Task(void *argument)
@@ -245,21 +243,19 @@ void VoltageMeasurement_Task(void *argument)
 
 
 	// on first execution
-	ch_buf[0] = CH_WATCHDOG;
-	ch_buf[1] = CH_WATCHDOG_STOP; // stop watchdog timer
-	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
 
-	ch_buf[0] = CH_ILIM;
-	ch_buf[1] = CH_ILIM_MAX; // 3.25A input current limit
-	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
+	ret_val = ch_init(&hi2c1);
 
-	ch_buf[0] = CH_ICHG;
-	ch_buf[1] = CH_ICHG_MAX; // 5.056A charging current limit
-	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
+//	ret_val = ch_transfer_byte_to_register(&hi2c1, CH_WATCHDOG, CH_WATCHDOG_STOP);
+//	ch_buf[0] = CH_WATCHDOG;
+//	ch_buf[1] = CH_WATCHDOG_STOP; // stop watchdog timer
+//	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
 
-	ch_buf[0] = CH_BATFET;
-	ch_buf[1] = CH_BATFET_DELAY; // delay before battery is disconnected
-	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
+//	ret_val = ch_transfer_byte_to_register(&hi2c1, CH_ILIM, CH_ILIM_MAX);
+//	ch_buf[0] = CH_ILIM;
+//	ch_buf[1] = CH_ILIM_MAX; // 3.25A input current limit
+//	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
+
 
 	/* Infinite loop */
 	for (;;) {
@@ -268,9 +264,11 @@ void VoltageMeasurement_Task(void *argument)
 
 		if(hi2c1.State == HAL_I2C_STATE_READY) {
 			// start ADC conversion
-			ch_buf[0] = CH_CONV_ADC;
-			ch_buf[1] = CH_CONV_ADC_START;
-			ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
+			ret_val = ch_transfer_byte_to_register(&hi2c1, CH_CONV_ADC, CH_CONV_ADC_START);
+//			ch_buf[0] = CH_CONV_ADC;
+//			ch_buf[1] = CH_CONV_ADC_START;
+//			ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
+
 			if(ret_val == HAL_OK) {
 				// We are waiting for the ADC to finish its conversion and
 				// switch back to listen mode for until it is done
@@ -279,8 +277,8 @@ void VoltageMeasurement_Task(void *argument)
 				ret_val = HAL_I2C_DisableListen_IT(&hi2c1);
 				if(ret_val == HAL_OK) {
 					// Read values from charger
-					ch_buf[0] = CH_STATUS;
-					ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 1, ch_i2c_master_timeout);
+					uint8_t reg = CH_STATUS;
+					ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
 					if(ret_val == HAL_OK) {
 						ret_val = HAL_I2C_Master_Receive_IT(&hi2c1, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
 					} else if(ret_val == HAL_ERROR) { // Master Transmit Address

@@ -5,7 +5,34 @@
  *      Author: jbaumann
  */
 
-#include "main.h"
+#include "ch_bq25895.h"
+
+/*
+ * Initialize the BQ25895 charger chip
+ */
+HAL_StatusTypeDef ch_init(I2C_HandleTypeDef *hi2c) {
+	HAL_StatusTypeDef ret_val;
+
+	// stop watchdog timer
+	ret_val = ch_transfer_byte_to_register(hi2c, CH_WATCHDOG, CH_WATCHDOG_STOP);
+	// 3.25A input current limit, ILIM pin disabled
+	ret_val = ch_transfer_byte_to_register(hi2c, CH_ILIM, CH_ILIM_MAX);
+	// set SYS_MIN to 3.0V
+	ret_val = ch_transfer_byte_to_register(hi2c, CH_CONFIG, CH_CONFIG_SYS_MIN);
+
+	return ret_val;
+}
+
+/*
+ * Convenience method that writes one byte of data to the i2c_register
+ * of the charger using the predefined charger address
+ */
+HAL_StatusTypeDef ch_transfer_byte_to_register(I2C_HandleTypeDef *hi2c, uint8_t i2c_register, uint8_t data) {
+	uint8_t ch_buf[2];
+	ch_buf[0] = i2c_register;
+	ch_buf[1] = data;
+	return HAL_I2C_Master_Transmit(hi2c, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
+}
 
 
 /*

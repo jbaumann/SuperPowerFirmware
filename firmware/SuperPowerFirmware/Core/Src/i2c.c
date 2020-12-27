@@ -392,7 +392,6 @@ void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c) {
 
 }
 
-
 /* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

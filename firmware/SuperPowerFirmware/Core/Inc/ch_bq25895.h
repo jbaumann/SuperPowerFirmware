@@ -9,6 +9,8 @@
 #ifndef INC_CH_BQ25895_H_
 #define INC_CH_BQ25895_H_
 
+#include "main.h"
+
 /*
  * Intervals for communication with the charger
  */
@@ -19,6 +21,9 @@ static const uint16_t ch_conv_delay         =  1000;  // time for conversion, se
 /*
  * FunctionPrototypes
  */
+
+HAL_StatusTypeDef ch_init(I2C_HandleTypeDef *hi2c);
+HAL_StatusTypeDef ch_transfer_byte_to_register(I2C_HandleTypeDef *hi2c, uint8_t i2c_register, uint8_t data);
 
 uint16_t ch_convert_batv(uint8_t raw);
 uint16_t ch_convert_vbus(uint8_t raw);
@@ -37,13 +42,15 @@ static const uint8_t CHARGER_ADDRESS = 0x6A << 1;
  */
 static const uint8_t CH_ILIM           = 0x00;
 static const uint8_t CH_CONV_ADC       = 0x02;
+static const uint8_t CH_CONFIG         = 0x03;
 static const uint8_t CH_ICHG           = 0x04;
 static const uint8_t CH_WATCHDOG       = 0x07;
 static const uint8_t CH_BATFET         = 0x09;
 static const uint8_t CH_STATUS         = 0x0B;
 
+static const uint8_t CH_ILIM_MAX       = 0b00110000; // 3.25A input current limit, ILIM pin disabled
+static const uint8_t CH_CONFIG_SYS_MIN = 0b00110000; // set SYS_MIN to 3.0V
 static const uint8_t CH_WATCHDOG_STOP  = 0b10001101; // stop watchdog timer
-static const uint8_t CH_ILIM_MAX       = 0b01111111; // 3.25A input current limit
 static const uint8_t CH_ICHG_MAX       = 0b01001111; // 5.056A charging current limit
 static const uint8_t CH_BATFET_DELAY   = 0b01001000; // delay before battery is disconnected
 
