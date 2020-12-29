@@ -343,6 +343,7 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	if(crc == i2c1_buffer[len + 1]) {
 		i2c_writeBufferToRegister(register_number);
 	}
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 
@@ -381,14 +382,17 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
  */
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 

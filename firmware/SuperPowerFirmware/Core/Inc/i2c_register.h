@@ -149,5 +149,13 @@ enum I2C_Register {
 
 }__attribute__ ((__packed__));            // force smallest size i.e., uint_8t (GCC syntax)
 
+/*
+ * The following assert guarantees that we have enough memory in the RTC Backup registers to store the data.
+ * The error thrown is not that clear but at least it gives an error at compile time.
+ * The maximum safe value is 76. This leaves one byte for the version id and still enough room to store all
+ * data regardless of alignment. This might be changed when necessary.
+ */
+#define ASSERT_BKUP_REG_SIZE(test) typedef char assertion_on_mystruct[( !!(test) )*2-1 ]
+ASSERT_BKUP_REG_SIZE( (sizeof(I2C_Config_Register_8Bit) + sizeof(I2C_Config_Register_16Bit)) < 77);
 
 #endif /* INC_I2C_REGISTER_H_ */

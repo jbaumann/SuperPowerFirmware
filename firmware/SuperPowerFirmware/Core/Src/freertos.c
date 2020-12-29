@@ -30,6 +30,9 @@
 #include "adc.h"
 #include "i2c.h"
 #include "ch_bq25895.h"
+
+// JB TODO move to external impl.
+#include "rtc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -186,6 +189,9 @@ void I2C_Task(void *argument)
 		if (status == osOK) {
 			printf("Hello receive, ");
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			uint32_t testreg = 0;
+			uint32_t testval = rtc_read_backup_reg(testreg);
+			rtc_write_backup_reg(testreg, 0x42);
 		}
 	}
 	osDelay(1);
