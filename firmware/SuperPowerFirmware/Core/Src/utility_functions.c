@@ -2,7 +2,7 @@
  * utility_functions.c
  *
  *  Created on: Nov 22, 2020
- *      Author: jbaumann
+ *      Author: jbaumann, Hector Manuel
  */
 
 #include <errno.h>
@@ -65,5 +65,42 @@ int _write(int fd, char *ptr, int len) {
 	else
 		return EIO;
 }
+
 #endif // DEBUG
+
+#ifdef FREERTOS_TOTAL_RUNTIME_TIMER
+TIM_HandleTypeDef htim10;
+void initializeTimerForRunTimeStats(void)
+{
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 65535;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 65535;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  __HAL_RCC_TIM10_CLK_ENABLE();
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+void configureTimerForRunTimeStats(void)
+{
+
+	HAL_TIM_Base_Start(&htim10);
+}
+
+unsigned long getRunTimeCounterValue(void)
+{
+	return __HAL_TIM_GetCounter(&htim10);
+}
+#else
+__weak void configureTimerForRunTimeStats(void){}
+
+__weak unsigned long getRunTimeCounterValue(void){ }
+#endif // FREERTOS_TOTAL_RUNTIME_TIMER
+
+
+
 

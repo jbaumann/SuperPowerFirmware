@@ -93,9 +93,10 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   debug_print("Starting to listen to I2C\r\n");
-
+#ifdef FREERTOS_TOTAL_RUNTIME_TIMER
+  initializeTimerForRunTimeStats();
+#endif
   HAL_I2C_EnableListen_IT(&hi2c1);
-
   debug_print("Initializing and starting the FreeRTOS Kernel\r\n");
 
   /* USER CODE END 2 */
