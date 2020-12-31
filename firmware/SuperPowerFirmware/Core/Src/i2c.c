@@ -30,6 +30,7 @@
 #include "crc_8bit.h"
 #include "cmsis_os.h"
 #include "queue_handles.h"
+#include "ch_bq25895.h"
 
 /*
  * Initialization of the register structures
@@ -42,24 +43,21 @@ I2C_Config_Register_8Bit i2c_config_register_8bit = {
 
 I2C_Status_Register_8Bit i2c_status_register_8bit = {
 	.val.should_shutdown         =  0x0,   // if != 0 contains the motivation for why the RPi should shutdown
+	.val.charger_status          =  0x0,   // contains the contents of the status register 0x0E
 };
 
 I2C_Config_Register_16Bit i2c_config_register_16bit = {
 	.val.timeout                 =  120,   // the timeout for the reset, should cover shutdown and reboot
-	.val.bat_voltage_coefficient = 1000,   // the multiplier for the measured battery voltage * 1000, integral non-linearity
-	.val.bat_voltage_constant    =    0,   // the constant added to the measurement of the battery voltage * 1000, offset error
-	.val.ext_voltage_coefficient = 2000,   // the multiplier for the measured external voltage * 1000, integral non-linearity
-	.val.ext_voltage_constant    =  700,   // the constant added to the measurement of the external voltage * 1000, offset error
 	.val.restart_voltage         = 3900,   // the battery voltage at which the RPi will be started again
 	.val.warn_voltage            = 3400,   // the battery voltage at which the RPi should should down
 	.val.ups_shutdown_voltage    = 3200,   // the battery voltage at which a hard shutdown is executed
-	.val.temperature_coefficient = 1000,   // the multiplier for the measured temperature * 1000, the coefficient
-	.val.temperature_constant    = -270,   // the constant added to the measurement as offset
 };
 
 I2C_Status_Register_16Bit i2c_status_register_16bit = {
 	.val.bat_voltage             =    0,   // the battery voltage, 3.3 should be low and 3.7 high voltage
-	.val.ext_voltage             =    0,   // the external voltage from Pi or other source
+	.val.charge_current          =    0,   // the battery charge current
+	.val.vbus_voltage            =    0,   // the primary power voltage
+	.val.ext_voltage             =    0,   // external voltage measured on PA0
 	.val.seconds                 =    0,   // seconds since last i2c access
 	.val.temperature             =    0,   // the on-chip temperature
 };
@@ -287,6 +285,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		// We need the sequential I2C methods
 		switch (TransferDirection) {
 		case I2C_DIRECTION_TRANSMIT:
+			// TODO check the results
 			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, len + 2, I2C_FIRST_FRAME); //len + reg + crc
 			break;
 
@@ -295,7 +294,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 			i2c_writeRegisterToBuffer(register_number);
 
 			i2c1_buffer[len] = calcCRC(register_number, i2c1_buffer, len);
-
+			// TODO check the results
 			HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, i2c1_buffer, len + 1, I2C_LAST_FRAME);
 			break;
 
@@ -307,6 +306,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		// TODO Hector this is the part where you tie in the RTC
 		switch (TransferDirection) {
 		case I2C_DIRECTION_TRANSMIT:
+			// TODO check the results
 			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer,
 					I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
 			break;
@@ -343,6 +343,29 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	if(crc == i2c1_buffer[len + 1]) {
 		i2c_writeBufferToRegister(register_number);
 	}
+	HAL_I2C_EnableListen_IT(&hi2c1);
+
+}
+
+/*
+ * This callback is called when the data from the charger
+ * has been successfully received. We copy the relevant
+ * information and turn the listen mode back on
+ */
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+	i2c_status_register_8bit.val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
+	uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
+	i2c_status_register_16bit.val.bat_voltage = batv;
+	uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
+	i2c_status_register_16bit.val.vbus_voltage = vbus_v;
+	uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
+	i2c_status_register_16bit.val.charge_current = ch_current;
+
+	// Turn the slave functionality on again
+	// We don't need to check the return value because it
+	// can only be HAL_OK or HAL_BUSY, either way I2C is
+	// listening after this call
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 
@@ -359,17 +382,19 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
  */
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
-
 
 /* USER CODE END 1 */
 

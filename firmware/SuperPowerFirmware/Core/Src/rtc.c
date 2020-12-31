@@ -130,6 +130,26 @@ char* rtc_get_register(uint8_t reg){
 	return ptr;
 }
 
+/*
+ * Basic read and write from backup register.Based on
+ * https://os.mbed.com/users/gregeric/notebook/using-stm32-rtc-backup-registers/
+ */
+
+uint32_t rtc_read_backup_reg(uint32_t backup_register) {
+	if(backup_register > 19) {
+		return 0xFFFFFFFF;
+	}
+    return HAL_RTCEx_BKUPRead(&hrtc, backup_register);
+}
+
+void rtc_write_backup_reg(uint32_t backup_register, uint32_t data) {
+	if(backup_register > 19) {
+		return;
+	}
+    HAL_PWR_EnableBkUpAccess();
+    HAL_RTCEx_BKUPWrite(&hrtc, backup_register, data);
+    HAL_PWR_DisableBkUpAccess();
+}
 
 /* USER CODE END 1 */
 

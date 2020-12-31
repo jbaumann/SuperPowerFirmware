@@ -55,6 +55,7 @@ typedef union {
 typedef union {
 	struct _I2C_Status_Register_8Bit {                 // _EXTRACT_I2C_REGISTER_
 		__IO uint8_t should_shutdown;
+		__IO uint8_t charger_status;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint8_t reg[sizeof(struct _I2C_Status_Register_8Bit)];
 } I2C_Status_Register_8Bit;
@@ -63,15 +64,9 @@ typedef union {
 typedef union {
 	struct _I2C_Config_Register_16Bit {                // _EXTRACT_I2C_REGISTER_
 		__IO uint16_t timeout;
-		__IO uint16_t bat_voltage_coefficient;
-		__IO int16_t bat_voltage_constant;
-		__IO uint16_t ext_voltage_coefficient;
-		__IO int16_t ext_voltage_constant;
 		__IO uint16_t restart_voltage;
 		__IO uint16_t warn_voltage;
 		__IO uint16_t ups_shutdown_voltage;
-		__IO uint16_t temperature_coefficient;
-		__IO int16_t temperature_constant;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint16_t reg[sizeof(struct _I2C_Config_Register_16Bit) / 2]; // adjust for 16 bit
 } I2C_Config_Register_16Bit;
@@ -79,6 +74,8 @@ typedef union {
 typedef union {
 	struct _I2C_Status_Register_16Bit {                // _EXTRACT_I2C_REGISTER_
 		__IO uint16_t bat_voltage;
+		__IO uint16_t charge_current;
+		__IO uint16_t vbus_voltage;
 		__IO uint16_t ext_voltage;
 		__IO uint16_t seconds;
 		__IO uint16_t temperature;
@@ -133,19 +130,16 @@ enum I2C_Register {
 	i2creg_force_shutdown          = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.force_shutdown),
 	// I2C_Status_Register_8Bit
 	i2creg_should_shutdown         = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.should_shutdown),
+	i2creg_charger_status          = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.charger_status),
 	// I2C_Config_Register_16Bit
 	i2creg_timeout                 = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.timeout)/2,
-	i2creg_bat_voltage_coefficient = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.bat_voltage_coefficient)/2,
-	i2creg_bat_voltage_constant    = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.bat_voltage_constant)/2,
-	i2creg_ext_voltage_coefficient = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.ext_voltage_coefficient)/2,
-	i2creg_ext_voltage_constant    = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.ext_voltage_constant)/2,
 	i2creg_restart_voltage         = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.restart_voltage)/2,
 	i2creg_warn_voltage            = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.warn_voltage)/2,
 	i2creg_ups_shutdown_voltage    = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.ups_shutdown_voltage)/2,
-	i2creg_temperature_coefficient = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.temperature_coefficient)/2,
-	i2creg_temperature_constant    = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.temperature_constant)/2,
 	// I2C_Status_Register_16Bit
 	i2creg_bat_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.bat_voltage)/2,
+	i2creg_charge_current          = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.charge_current)/2,
+	i2creg_vbus_voltage            = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.vbus_voltage)/2,
 	i2creg_ext_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.ext_voltage)/2,
 	i2creg_seconds                 = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.seconds)/2,
 	i2creg_temperature             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.temperature)/2,
@@ -155,5 +149,13 @@ enum I2C_Register {
 
 }__attribute__ ((__packed__));            // force smallest size i.e., uint_8t (GCC syntax)
 
+/*
+ * The following assert guarantees that we have enough memory in the RTC Backup registers to store the data.
+ * The error thrown is not that clear but at least it gives an error at compile time.
+ * The maximum safe value is 76. This leaves one byte for the version id and still enough room to store all
+ * data regardless of alignment. This might be changed when necessary.
+ */
+#define ASSERT_BKUP_REG_SIZE(test) typedef char assertion_on_mystruct[( !!(test) )*2-1 ]
+ASSERT_BKUP_REG_SIZE( (sizeof(I2C_Config_Register_8Bit) + sizeof(I2C_Config_Register_16Bit)) < 77);
 
 #endif /* INC_I2C_REGISTER_H_ */
