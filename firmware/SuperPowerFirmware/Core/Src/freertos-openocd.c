@@ -18,6 +18,7 @@
  */
 
 //#include "FreeRTOS.h"
+#ifdef FREERTOS_TOTAL_RUNTIME_TIMER
 #include "FreeRTOSConfig.h"
 
 #ifdef __GNUC__
@@ -27,3 +28,4 @@
 #endif
 
 const unsigned int USED uxTopUsedPriority = configMAX_PRIORITIES - 1;
+#endif

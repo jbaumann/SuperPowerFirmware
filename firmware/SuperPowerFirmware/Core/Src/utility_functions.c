@@ -66,9 +66,12 @@ int _write(int fd, char *ptr, int len) {
 		return EIO;
 }
 
-#endif // DEBUG
-
 #ifdef FREERTOS_TOTAL_RUNTIME_TIMER
+/*
+* by default the timer 10 is used to measure the run time percentage of each task
+* TIM_HandleTypeDef htim10;
+*/
+
 TIM_HandleTypeDef htim10;
 void initializeTimerForRunTimeStats(void)
 {
@@ -100,6 +103,7 @@ __weak void configureTimerForRunTimeStats(void){}
 
 __weak unsigned long getRunTimeCounterValue(void){ }
 #endif // FREERTOS_TOTAL_RUNTIME_TIMER
+#endif // DEBUG
 
 
 
