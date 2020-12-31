@@ -110,6 +110,27 @@ void VoltageMeasurement_Task(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
+/* Hook prototypes */
+void configureTimerForRunTimeStats(void);
+unsigned long getRunTimeCounterValue(void);
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
+
+/* USER CODE BEGIN 1 */
+/* Functions needed when configGENERATE_RUN_TIME_STATS is on */
+
+
+
+/* USER CODE END 1 */
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+{
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+   called if a stack overflow is detected. */
+}
+/* USER CODE END 4 */
+
 /**
   * @brief  FreeRTOS initialization
   * @param  None
@@ -211,6 +232,7 @@ void RTC_Task(void *argument)
   /* Infinite loop */
   for(;;)
   {
+	  //uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
     osDelay(1);
   }
   /* USER CODE END RTC_Task */
@@ -222,6 +244,7 @@ void RTC_Task(void *argument)
 * @param argument: Not used
 * @retval None
 */
+//extern UBaseType_t uxTaskGetStackHighWaterMark( TaskHandle_t xTask );
 /* USER CODE END Header_StateMachine_Task */
 void StateMachine_Task(void *argument)
 {

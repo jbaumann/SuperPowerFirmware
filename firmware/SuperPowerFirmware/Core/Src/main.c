@@ -97,11 +97,18 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
+
   HAL_TIM_Base_Start_IT(&htim5);
 
   // I2C Enable Listen will be turned on by the FreeRTos task reading the charger information
   //HAL_I2C_EnableListen_IT(&hi2c1);
 
+  debug_print("Starting to listen to I2C\r\n");
+#ifdef FREERTOS_TOTAL_RUNTIME_TIMER
+  initializeTimerForRunTimeStats();
+#endif
+  HAL_I2C_EnableListen_IT(&hi2c1);
+  debug_print("Initializing and starting the FreeRTOS Kernel\r\n");
 
   /* USER CODE END 2 */
 
@@ -157,7 +164,7 @@ void SystemClock_Config(void)
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+			      |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
