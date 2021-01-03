@@ -93,26 +93,52 @@ typedef union {
 typedef union {
 	struct _I2C_Special_Register_16Bit {               // _EXTRACT_I2C_REGISTER_
 		__IO uint8_t version;
-		__IO uint8_t init_eeprom;
+		__IO uint8_t write_to_eeprom;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint16_t reg[sizeof(struct _I2C_Special_Register_16Bit)];
 } I2C_Special_Register_16Bit;
 
 /*
- * The actual struct declarations. Special registers are _not_ instantiated
+ * The struct declaration for the config registers. These are put into a backup
+ * register structure so that we can write them to the RTC backup registers or
+ * the eeprom without problems.
+ * Special registers are _not_ instantiated.
  */
-I2C_Config_Register_8Bit i2c_config_register_8bit;
-I2C_Status_Register_8Bit i2c_status_register_8bit;
-I2C_Config_Register_16Bit i2c_config_register_16bit;
-I2C_Status_Register_16Bit i2c_status_register_16bit;
+
+typedef union {
+	struct Backup_Registers {
+		uint8_t version;
+		I2C_Config_Register_8Bit  i2c_config_register_8bit;
+		I2C_Config_Register_16Bit i2c_config_register_16bit;
+	} val;
+	uint32_t reg[sizeof(struct Backup_Registers) / 4];
+} Config_Registers;
+
+Config_Registers config_registers;
+
+/*
+ * The following assert guarantees that we have enough memory in the RTC Backup registers to store the data.
+ * The error thrown (size of array... is negative" is not that clear but at least it gives an error at compile
+ * time. The maximum value according to the datasheet is 80.
+ */
+#define ASSERT_BKUP_REG_SIZE(test) typedef char assertion_on_mystruct[( !!(test) )*2-1 ]
+ASSERT_BKUP_REG_SIZE( (sizeof(config_registers.reg)) < 80);
+
+/*
+ * We use pointers for all structs so we won't have to differentiate
+ */
+I2C_Config_Register_8Bit  *i2c_config_register_8bit;
+I2C_Config_Register_16Bit *i2c_config_register_16bit;
+I2C_Status_Register_8Bit  *i2c_status_register_8bit;
+I2C_Status_Register_16Bit *i2c_status_register_16bit;
 
 /*
  * Helper values allowing to check whether a register value is in bounds
  */
-static const uint8_t i2c_config_reg_8bit_size = sizeof(i2c_config_register_8bit.reg) / sizeof(i2c_config_register_8bit.reg[0]);
-static const uint8_t i2c_status_reg_8bit_size = sizeof(i2c_status_register_8bit.reg) / sizeof(i2c_status_register_8bit.reg[0]);
-static const uint8_t i2c_config_reg_16bit_size = sizeof(i2c_config_register_16bit.reg) / sizeof(i2c_config_register_16bit.reg[0]);
-static const uint8_t i2c_status_reg_16bit_size = sizeof(i2c_status_register_16bit.reg) / sizeof(i2c_status_register_16bit.reg[0]);
+static const uint8_t i2c_config_reg_8bit_size = sizeof(i2c_config_register_8bit->reg) / sizeof(i2c_config_register_8bit->reg[0]);
+static const uint8_t i2c_status_reg_8bit_size = sizeof(i2c_status_register_8bit->reg) / sizeof(i2c_status_register_8bit->reg[0]);
+static const uint8_t i2c_config_reg_16bit_size = sizeof(i2c_config_register_16bit->reg) / sizeof(i2c_config_register_16bit->reg[0]);
+static const uint8_t i2c_status_reg_16bit_size = sizeof(i2c_status_register_16bit->reg) / sizeof(i2c_status_register_16bit->reg[0]);
 static const uint8_t i2c_special_reg_16bit_size = sizeof(I2C_Special_Register_16Bit);
 
 
@@ -128,6 +154,7 @@ enum I2C_Register {
 	// I2C_Config_Register_8Bit
 	i2creg_primed                  = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.primed),
 	i2creg_force_shutdown          = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.force_shutdown),
+	i2creg_enable_bootloader       = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.enable_bootloader),
 	// I2C_Status_Register_8Bit
 	i2creg_should_shutdown         = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.should_shutdown),
 	i2creg_charger_status          = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.charger_status),
@@ -145,17 +172,9 @@ enum I2C_Register {
 	i2creg_temperature             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.temperature)/2,
 	// I2C Special Registers
 	i2creg_version                 = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.version),
-	i2creg_init_eeprom             = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.init_eeprom),
+	i2creg_write_to_eeprom         = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.write_to_eeprom),
 
 }__attribute__ ((__packed__));            // force smallest size i.e., uint_8t (GCC syntax)
 
-/*
- * The following assert guarantees that we have enough memory in the RTC Backup registers to store the data.
- * The error thrown is not that clear but at least it gives an error at compile time.
- * The maximum safe value is 76. This leaves one byte for the version id and still enough room to store all
- * data regardless of alignment. This might be changed when necessary.
- */
-#define ASSERT_BKUP_REG_SIZE(test) typedef char assertion_on_mystruct[( !!(test) )*2-1 ]
-ASSERT_BKUP_REG_SIZE( (sizeof(I2C_Config_Register_8Bit) + sizeof(I2C_Config_Register_16Bit)) < 77);
 
 #endif /* INC_I2C_REGISTER_H_ */

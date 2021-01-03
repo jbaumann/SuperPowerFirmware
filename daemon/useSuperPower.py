@@ -9,7 +9,7 @@ import time
 import logging
 from superpower_i2c import SuperPower
 
-_time_const  = 0.1  # used as a pause between i2c communications
+_time_const  = 0.0  # used as a pause between i2c communications
 _num_retries = 1   # the number of retries when reading from or writing to the SuperPower UPS
 _i2c_address = 0x40 # the I2C address that is used for the SuperPower UPS
 

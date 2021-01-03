@@ -30,6 +30,7 @@
 #include "adc.h"
 #include "i2c.h"
 #include "ch_bq25895.h"
+#include "rtc.h"
 
 // JB TODO move to external impl.
 #include "rtc.h"
@@ -210,9 +211,6 @@ void I2C_Task(void *argument)
 		if (status == osOK) {
 			printf("Hello receive, ");
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-			uint32_t testreg = 0;
-			uint32_t testval = rtc_read_backup_reg(testreg);
-			rtc_write_backup_reg(testreg, 0x42);
 		}
 	}
 	osDelay(1);
@@ -272,32 +270,17 @@ void VoltageMeasurement_Task(void *argument)
 
 
 	// on first execution
-
 	ret_val = ch_init(&hi2c1);
-
-//	ret_val = ch_transfer_byte_to_register(&hi2c1, CH_WATCHDOG, CH_WATCHDOG_STOP);
-//	ch_buf[0] = CH_WATCHDOG;
-//	ch_buf[1] = CH_WATCHDOG_STOP; // stop watchdog timer
-//	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
-
-//	ret_val = ch_transfer_byte_to_register(&hi2c1, CH_ILIM, CH_ILIM_MAX);
-//	ch_buf[0] = CH_ILIM;
-//	ch_buf[1] = CH_ILIM_MAX; // 3.25A input current limit
-//	ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
-
 
 	/* Infinite loop */
 	for (;;) {
-		/*
+
 		// Turn the I2C slave functionality off
 		ret_val = HAL_I2C_DisableListen_IT(&hi2c1);
 
 		if(hi2c1.State == HAL_I2C_STATE_READY) {
 			// start ADC conversion
 			ret_val = ch_transfer_byte_to_register(&hi2c1, CH_CONV_ADC, CH_CONV_ADC_START);
-//			ch_buf[0] = CH_CONV_ADC;
-//			ch_buf[1] = CH_CONV_ADC_START;
-//			ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, ch_buf, 2, ch_i2c_master_timeout);
 
 			if(ret_val == HAL_OK) {
 				// We are waiting for the ADC to finish its conversion and
@@ -327,7 +310,7 @@ void VoltageMeasurement_Task(void *argument)
 				// it to come online.
 			}
 		}
-*/
+
 		osDelay(ch_update_interval);
 
 	}

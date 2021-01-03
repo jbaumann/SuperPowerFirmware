@@ -27,7 +27,7 @@ class SuperPower:
     SECONDS = 0xc4
     TEMPERATURE = 0xc5
     VERSION = 0xf0
-    INIT_EEPROM = 0xf1
+    WRITE_TO_EEPROM = 0xf1
 
     _POLYNOME = 0x31
 
