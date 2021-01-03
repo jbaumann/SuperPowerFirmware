@@ -35,6 +35,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <stdarg.h>
+#include <limits.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -46,6 +47,18 @@ extern "C" {
 enum VersionNumber {
 	MAJOR = 1, MINOR = 0, PATCH = 7,
 };
+
+/*
+   We create an init value from the lower bits of the minor version number (BITS_FOR_MINOR)
+   and use the remaining bits for the lower bits of the major number (BITS_FOR_MAJOR).
+   This way, whenever the minor or major version changes, the eeprom will be initialized again to
+   ensure that everything works without problems.
+*/
+static const uint8_t BITS_FOR_MINOR    = 5;
+static const uint8_t BITS_FOR_MAJOR    = CHAR_BIT - BITS_FOR_MINOR;
+static const uint8_t MINOR_PART        = MINOR & ((1<<BITS_FOR_MINOR)-1);
+static const uint8_t MAJOR_PART        = (MAJOR & BITS_FOR_MAJOR) << BITS_FOR_MINOR;
+static const uint8_t BACKUP_INIT_VALUE = MAJOR_PART | MINOR_PART;
 
 /* USER CODE END ET */
 

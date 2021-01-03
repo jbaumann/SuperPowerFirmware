@@ -96,19 +96,17 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
-
+  restore_registers();
 
   HAL_TIM_Base_Start_IT(&htim5);
 
   // I2C Enable Listen will be turned on by the FreeRTos task reading the charger information
   //HAL_I2C_EnableListen_IT(&hi2c1);
 
-  debug_print("Starting to listen to I2C\r\n");
 #ifdef FREERTOS_TOTAL_RUNTIME_TIMER
-  initializeTimerForRunTimeStats();
+  configureTimerForRunTimeStats();
 #endif
   HAL_I2C_EnableListen_IT(&hi2c1);
-  debug_print("Initializing and starting the FreeRTOS Kernel\r\n");
 
   /* USER CODE END 2 */
 

@@ -194,11 +194,11 @@ int16_t compute_temperature(uint32_t raw) {
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc) {
 	uint16_t v1, v2;
 	v1 = HAL_ADCEx_InjectedGetValue(&hadc1, 1) * 3300 / 4096;
-	i2c_status_register_16bit.val.ext_voltage = v1;
+	i2c_status_register_16bit->val.ext_voltage = v1;
 
 	v2 = HAL_ADCEx_InjectedGetValue(&hadc1, 2);
 	v2 = compute_temperature(v2);
-	i2c_status_register_16bit.val.temperature = v2;
+	i2c_status_register_16bit->val.temperature = v2;
 }
 
 

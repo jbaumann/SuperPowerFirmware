@@ -42,8 +42,11 @@ void MX_RTC_Init(void);
 /* USER CODE BEGIN Prototypes */
 char* rtc_get_register(uint8_t reg);
 
-uint32_t rtc_read_backup_reg(uint32_t backup_register);
-void rtc_write_backup_reg(uint32_t backup_register, uint32_t data);
+//uint32_t rtc_read_backup_reg(uint32_t backup_register);
+//void rtc_write_backup_reg(uint32_t backup_register, uint32_t data);
+
+void backup_registers();
+void restore_registers();
 
 /* USER CODE END Prototypes */
 

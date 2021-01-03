@@ -32,35 +32,6 @@
 #include "queue_handles.h"
 #include "ch_bq25895.h"
 
-/*
- * Initialization of the register structures
- */
-I2C_Config_Register_8Bit i2c_config_register_8bit = {
-	.val.primed                  =    0,   // 1 if the uC should control the system
-	.val.force_shutdown          =    0,   // 1 if the uC should shutdown the UPS if the voltage is too low (hard shutdown)
-	.val.enable_bootloader       =    0,   // 1 if the bootloader is enabled
-};
-
-I2C_Status_Register_8Bit i2c_status_register_8bit = {
-	.val.should_shutdown         =  0x0,   // if != 0 contains the motivation for why the RPi should shutdown
-	.val.charger_status          =  0x0,   // contains the contents of the status register 0x0E
-};
-
-I2C_Config_Register_16Bit i2c_config_register_16bit = {
-	.val.timeout                 =  120,   // the timeout for the reset, should cover shutdown and reboot
-	.val.restart_voltage         = 3900,   // the battery voltage at which the RPi will be started again
-	.val.warn_voltage            = 3400,   // the battery voltage at which the RPi should should down
-	.val.ups_shutdown_voltage    = 3200,   // the battery voltage at which a hard shutdown is executed
-};
-
-I2C_Status_Register_16Bit i2c_status_register_16bit = {
-	.val.bat_voltage             =    0,   // the battery voltage, 3.3 should be low and 3.7 high voltage
-	.val.charge_current          =    0,   // the battery charge current
-	.val.vbus_voltage            =    0,   // the primary power voltage
-	.val.ext_voltage             =    0,   // external voltage measured on PA0
-	.val.seconds                 =    0,   // seconds since last i2c access
-	.val.temperature             =    0,   // the on-chip temperature
-};
 
 
 /*
@@ -179,14 +150,14 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
 		// access to the CONFIG_8BIT struct
 		uint8_t reg = register_number - CONFIG_8BIT_OFFSET;
 		if(reg < i2c_config_reg_8bit_size) {
-			i2c1_buffer[0] = i2c_config_register_8bit.reg[reg];
+			i2c1_buffer[0] = i2c_config_register_8bit->reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)CONFIG_16BIT_OFFSET) {
 
 		// access to the STATUS_8BIT struct
 		uint8_t reg = register_number - STATUS_8BIT_OFFSET;
 		if(reg < i2c_status_reg_8bit_size) {
-			i2c1_buffer[0] = i2c_status_register_8bit.reg[reg];
+			i2c1_buffer[0] = i2c_status_register_8bit->reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)STATUS_16BIT_OFFSET) {
 
@@ -194,7 +165,7 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
 		if(reg < i2c_config_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) i2c1_buffer;
-			val[0] = i2c_config_register_16bit.reg[reg];
+			val[0] = i2c_config_register_16bit->reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 
@@ -202,7 +173,7 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
 		uint8_t reg = register_number - STATUS_16BIT_OFFSET;
 		if(reg < i2c_status_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) i2c1_buffer;
-			val[0] = i2c_status_register_16bit.reg[reg];
+			val[0] = i2c_status_register_16bit->reg[reg];
 		}
 	} else {
 		// access to the SPECIAL_16BIT struct
@@ -223,13 +194,16 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
  *  register_number the register value sent by the RPi
  */
 void i2c_writeBufferToRegister(uint8_t register_number) {
+	uint8_t reg_has_changed = false;
+
 	// identify the addressed struct and copy the value
 	if (register_number < STATUS_8BIT_OFFSET) {
 
 		// access to the CONFIG_8BIT struct
 		uint8_t reg = register_number - CONFIG_8BIT_OFFSET;
 		if(reg < i2c_config_reg_8bit_size) {
-			i2c_config_register_8bit.reg[reg] = i2c1_buffer[0];
+			i2c_config_register_8bit->reg[reg] = i2c1_buffer[0];
+			reg_has_changed = true;
 		}
 	} else if (register_number < CONFIG_16BIT_OFFSET) {
 		/* the RPi does not set values in the STATUS_8BIT struct */
@@ -239,7 +213,7 @@ void i2c_writeBufferToRegister(uint8_t register_number) {
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
 		if(reg < i2c_config_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) (i2c1_buffer);
-			i2c_config_register_16bit.reg[reg] = val[0];
+			i2c_config_register_16bit->reg[reg] = val[0];
 
 			I2C_QueueMsg_t msg;
 			msg.id = register_number;
@@ -247,12 +221,16 @@ void i2c_writeBufferToRegister(uint8_t register_number) {
 
 			osMessageQueuePut(I2C_R_QueueHandle, &msg, 0, 0);
 
+			reg_has_changed = true;
 		}
 	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 		/* the RPi does not set values in the STATUS_16BIT struct */
 
 	} else {
 		// access to the SPECIAL_16BIT struct
+	}
+	if(reg_has_changed) {
+		backup_registers();
 	}
 }
 
@@ -267,6 +245,11 @@ uint8_t i2c_calc_transfer_size( ) {
 		case i2creg_version:
 			// 3 byte + crc
 			len = 3 + 1;
+			break;
+		case i2creg_write_to_eeprom:
+			// 1 byte + crc
+			len = 1 + 1;
+			break;
 		default:
 			break;
 		}
@@ -381,13 +364,13 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
  * information and turn the listen mode back on
  */
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-	i2c_status_register_8bit.val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
+	i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
 	uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
-	i2c_status_register_16bit.val.bat_voltage = batv;
+	i2c_status_register_16bit->val.bat_voltage = batv;
 	uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
-	i2c_status_register_16bit.val.vbus_voltage = vbus_v;
+	i2c_status_register_16bit->val.vbus_voltage = vbus_v;
 	uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
-	i2c_status_register_16bit.val.charge_current = ch_current;
+	i2c_status_register_16bit->val.charge_current = ch_current;
 
 	// Turn the slave functionality on again
 	// We don't need to check the return value because it

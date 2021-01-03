@@ -22,6 +22,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "DS3231.h"
+#include "i2c_register.h"
 
 RTC_TimeTypeDef time;
 RTC_DateTypeDef date;
@@ -130,10 +131,12 @@ char* rtc_get_register(uint8_t reg){
 	return ptr;
 }
 
+
 /*
  * Basic read and write from backup register.Based on
  * https://os.mbed.com/users/gregeric/notebook/using-stm32-rtc-backup-registers/
  */
+
 
 uint32_t rtc_read_backup_reg(uint32_t backup_register) {
 	if(backup_register > 19) {
@@ -150,6 +153,35 @@ void rtc_write_backup_reg(uint32_t backup_register, uint32_t data) {
     HAL_RTCEx_BKUPWrite(&hrtc, backup_register, data);
     HAL_PWR_DisableBkUpAccess();
 }
+
+/*
+ * The following function writes the current config data to the
+ * backup registers in the RTC chip
+ */
+void backup_registers() {
+	for(int i = 0; i < (sizeof(Config_Registers) / 4); i++) {
+		rtc_write_backup_reg(i, config_registers.reg[i]);
+	}
+}
+
+/*
+ * The following function reads the current config data from the
+ * backup registers in the RTC chip if the version number matches
+ */
+void restore_registers() {
+	// read the first register
+	uint32_t first_value;
+	first_value = rtc_read_backup_reg(0);
+	// check the version number first
+	if( (0xFF &first_value) == BACKUP_INIT_VALUE) {
+
+		config_registers.reg[0] = first_value;
+		for(int i = 1; i < (sizeof(Config_Registers) / 4); i++) {
+			config_registers.reg[i] = rtc_read_backup_reg(i);
+		}
+	}
+}
+
 
 /* USER CODE END 1 */
 
