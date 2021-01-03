@@ -64,10 +64,11 @@ I2C_Status_Register_16Bit i2c_status_register_16bit = {
 
 
 /*
- * Communication buffers for I2C
+ * Communication data for I2C
  */
 uint8_t i2c1_buffer[I2C_BUFFER_SIZE + 1]; // worst case size including the crc
-
+_Bool i2c_primary_address = true;
+enum I2C_Register i2c_register;
 _Bool i2c_in_progress = false;
 
 /*
@@ -106,7 +107,6 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
   if(i2cHandle->Instance==I2C1)
   {
   /* USER CODE BEGIN I2C1_MspInit 0 */
-
   /* USER CODE END I2C1_MspInit 0 */
 
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -238,7 +238,7 @@ void i2c_writeBufferToRegister(uint8_t register_number) {
 		// access to the CONFIG_16BIT struct
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
 		if(reg < i2c_config_reg_16bit_size) {
-			uint16_t *val = (uint16_t*) (i2c1_buffer + 1); // reg is [0]
+			uint16_t *val = (uint16_t*) (i2c1_buffer);
 			i2c_config_register_16bit.reg[reg] = val[0];
 
 			I2C_QueueMsg_t msg;
@@ -257,47 +257,54 @@ void i2c_writeBufferToRegister(uint8_t register_number) {
 }
 
 /*
+ * Determine the correct transfer size depending on the current value
+ * of the i2c_register
+ */
+uint8_t i2c_calc_transfer_size( ) {
+	uint8_t len = 1 + 1; // 8bit by default + crc
+	if (i2c_register >= (enum I2C_Register) SPECIAL_16BIT_OFFSET) {
+		switch (i2c_register) {
+		case i2creg_version:
+			// 3 byte + crc
+			len = 3 + 1;
+		default:
+			break;
+		}
+	} else if (i2c_register >= (enum I2C_Register) CONFIG_16BIT_OFFSET) {
+		// We have a 16bit register + crc
+		len = 2 + 1;
+	}
+	return len;
+}
+
+/*
  * We use the primary address for the UPS and the secondary address for
  * the RTC
  */
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		uint16_t AddrMatchCode) {
 
-	_Bool primary_address = (hi2c->Init.OwnAddress1 == AddrMatchCode);
-	enum I2C_Register register_number = hi2c->Instance->DR;
+	i2c_primary_address = (hi2c->Init.OwnAddress1 == AddrMatchCode);
 
-	if (primary_address) {
+	if (i2c_primary_address) {
 		// the UPS is accessed
 
-		uint8_t len = 1; // 8bit by default
-		if(register_number >= (enum I2C_Register)CONFIG_16BIT_OFFSET) {
-			// We have a 16bit register
-			len = 2;
-		}
-		if(register_number >= (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
-			switch(register_number) {
-			case i2creg_version:
-				len = 3;
-			default:
-				break;
-			}
-		}
-		// We need the sequential I2C methods
+		uint8_t len;
 		switch (TransferDirection) {
 		case I2C_DIRECTION_TRANSMIT:
-			// TODO check the results
-			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, len + 2, I2C_FIRST_FRAME); //len + reg + crc
+			// we receive the register and later its contents in
+			// HAL_I2C_SlaveRxCpltCallback(). We use 8-bit registers,
+			// thus the length is 1.
+			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, 1, I2C_FIRST_FRAME); // read the register
 			break;
-
 		case I2C_DIRECTION_RECEIVE:
-			// identify the addressed struct and copy the value
-			i2c_writeRegisterToBuffer(register_number);
-
-			i2c1_buffer[len] = calcCRC(register_number, i2c1_buffer, len);
-			// TODO check the results
-			HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, i2c1_buffer, len + 1, I2C_LAST_FRAME);
+			// we copy the data to the buffer and send it to the RPi
+			i2c_register = hi2c->Instance->DR;
+			len = i2c_calc_transfer_size();
+			i2c_writeRegisterToBuffer(i2c_register);
+			i2c1_buffer[len - 1] = calcCRC(i2c_register, i2c1_buffer, len - 1);
+			HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, i2c1_buffer, len, I2C_LAST_FRAME);
 			break;
-
 		default:
 			break;
 		}
@@ -324,25 +331,46 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 }
 
 /*
- * This callback is called when data from the RPi has been
- * successfully received. The buffer contains the register,
- * then the value(s) and finally the CRC. Depending on the
- * size of the transmitted data we have 3 bytes (for 8bit)
- * or 4 bytes (for 16bit) values.
+ * This callback is called when the RPi wants to send data
+ * to us. The first call with i2c_in_progress == false
+ * receives the i2c register, sets i2c_in_progress to true
+ * and starts a second call to receive the actual data.
  */
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-	i2c_in_progress = false;
 
-	uint8_t len = hi2c->XferSize - 2;
-	uint8_t register_number = i2c1_buffer[0];
+	if(i2c_primary_address) {
+		// UPS code
+		if(i2c_in_progress) {
+			// This is the second call triggered by the
+			// "else"-path of this statement, in which we
+			// have extracted the register number.
+			// We now have received the data, check the CRC
+			// and save it to the correct register.
+			i2c_in_progress = false;
 
-	// check crc
-	uint8_t crc = calcCRC(register_number, (i2c1_buffer + 1), len);
+			uint8_t len = hi2c->XferSize - 1;
+			// check crc
+			uint8_t crc = calcCRC(i2c_register, i2c1_buffer, len);
 
-	// copy value if crc is correct
-	if(crc == i2c1_buffer[len + 1]) {
-		i2c_writeBufferToRegister(register_number);
+			// copy value if crc is correct
+			if(crc == i2c1_buffer[len]) {
+				i2c_writeBufferToRegister(i2c_register);
+			}
+		}
+		else {
+			// This is the first call, triggered by
+			// HAL_I2C_AddrCallback(). We extract the
+			// i2c_register to use it in the next round.
+			i2c_in_progress = true;
+			i2c_register = i2c1_buffer[0];
+			uint8_t len	= i2c_calc_transfer_size();
+			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, len, I2C_FIRST_FRAME);
+		}
+	} else {
+		// RTC code
 	}
+
+
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
@@ -373,6 +401,7 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
  * We restart the I2C listening mode
  */
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
+	i2c_in_progress = false;
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
 }
 
@@ -383,7 +412,6 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
 	HAL_I2C_EnableListen_IT(&hi2c1);
-
 }
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
@@ -393,7 +421,6 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c) {
 	i2c_in_progress = false;
 	HAL_I2C_EnableListen_IT(&hi2c1);
-
 }
 
 /* USER CODE END 1 */

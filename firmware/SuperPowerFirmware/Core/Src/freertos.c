@@ -288,6 +288,7 @@ void VoltageMeasurement_Task(void *argument)
 
 	/* Infinite loop */
 	for (;;) {
+		/*
 		// Turn the I2C slave functionality off
 		ret_val = HAL_I2C_DisableListen_IT(&hi2c1);
 
@@ -326,7 +327,7 @@ void VoltageMeasurement_Task(void *argument)
 				// it to come online.
 			}
 		}
-
+*/
 		osDelay(ch_update_interval);
 
 	}
