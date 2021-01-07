@@ -25,6 +25,7 @@
  * Our own includes have to be placed below the user code line as well
  */
 #include <stdbool.h>
+#include <string.h>
 
 #include "rtc.h"
 #include "crc_8bit.h"
@@ -293,22 +294,30 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		}
 	} else {
 		// the RTC is accessed
-		// TODO Hector this is the part where you tie in the RTC
-		switch (TransferDirection) {
+
+		// TODO Refactor
+		uint8_t *slaveTransmitBuffer;
+
+		switch(TransferDirection){
 		case I2C_DIRECTION_TRANSMIT:
-			// TODO check the results
-			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer,
-					I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
+			//addr = AddrMatchCode;
+			test.address = AddrMatchCode;
+			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
 			break;
 		case I2C_DIRECTION_RECEIVE:
-//			i2c1_slave_transmit_buffer = (uint8_t*) rtc_get_register(
-//					i2c1_slave_receive_buffer[0]);
-//			i2c1_size_of_data = 6;
-//			HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, i2c1_slave_transmit_buffer,
-//					i2c1_size_of_data, I2C_LAST_FRAME);
+			switch(AddrMatchCode >> 1){
+			case 20:
+				slaveTransmitBuffer = (uint8_t*)rtc_get_RTC_register(i2c1_buffer[0]);
+				HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, rtc_data_size, I2C_LAST_FRAME);
+				break;
+			case 0x21:
+				break;
+			default:
+				break;
+			}
 			break;
-		default:
-			break;
+			default:
+				break;
 		}
 	}
 }
@@ -347,10 +356,20 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 			i2c_in_progress = true;
 			i2c_register = i2c1_buffer[0];
 			uint8_t len	= i2c_calc_transfer_size();
-			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, len, I2C_FIRST_FRAME);
+			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, len, I2C_LAST_FRAME);
 		}
 	} else {
 		// RTC code
+		if(hi2c->XferCount == 32){
+			test.cmd_size = 0;
+		}else{
+			test.cmd_size = (uint8_t)(32 - hi2c->XferCount - 1);
+			memcpy(test.data, i2c1_buffer+1, test.cmd_size);
+		}
+		memset(i2c1_buffer, 0, 31);
+		if(test.cmd_size > 0){
+			rtc_msg_decode(test);
+		}
 	}
 
 
