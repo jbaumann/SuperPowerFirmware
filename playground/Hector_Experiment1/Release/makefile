@@ -28,6 +28,11 @@ endif
 
 -include ../makefile.defs
 
+BUILD_ARTIFACT_NAME := SuperPowerFirmware
+BUILD_ARTIFACT_EXTENSION := elf
+BUILD_ARTIFACT_PREFIX := 
+BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME).$(BUILD_ARTIFACT_EXTENSION)
+
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
 SuperPowerFirmware.elf \
@@ -43,11 +48,14 @@ SuperPowerFirmware.bin \
 
 
 # All Target
-all: SuperPowerFirmware.elf secondary-outputs
+all: main-build
+
+# Main-build Target
+main-build: SuperPowerFirmware.elf secondary-outputs
 
 # Tool invocations
-SuperPowerFirmware.elf: $(OBJS) $(USER_OBJS) /home/hector/Documents/SuperPowerFirmware/playground/SuperPowerFirmware/STM32F411RETX_FLASH.ld
-	arm-none-eabi-gcc -o "SuperPowerFirmware.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/hector/Documents/SuperPowerFirmware/playground/SuperPowerFirmware/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SuperPowerFirmware.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+SuperPowerFirmware.elf: $(OBJS) $(USER_OBJS) /home/hector/Documents/SuperPowerFirmware/playground/Hector_Experiment1/STM32F411RETX_FLASH.ld
+	arm-none-eabi-gcc -o "SuperPowerFirmware.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/hector/Documents/SuperPowerFirmware/playground/Hector_Experiment1/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SuperPowerFirmware.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -73,7 +81,14 @@ clean:
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_BIN)
 
-.PHONY: all clean dependents
+fail-specified-linker-script-missing:
+	@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'
+	@exit 2
+
+warn-no-linker-script-specified:
+	@echo 'Warning: No linker script specified. Check the linker settings in the build configuration.'
+
+.PHONY: all clean dependents fail-specified-linker-script-missing warn-no-linker-script-specified
 .SECONDARY:
 
 -include ../makefile.targets
