@@ -38,7 +38,7 @@ void MX_I2C1_Init(void)
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_ENABLE;
   hi2c1.Init.OwnAddress2 = 42;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_ENABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
   {
     Error_Handler();

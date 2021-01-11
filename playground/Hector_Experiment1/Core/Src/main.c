@@ -97,9 +97,9 @@ char* getRegister(uint8_t reg){
 	//rt.seconds.seconds = 0;
 	char* ptr = NULL;
 
-	//HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
-	//HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
-/*
+	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
+	HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
+
 	timebuffer[0] = time.Seconds;
 	timebuffer[1] = time.Minutes;
 	timebuffer[2] = time.Hours;
@@ -107,7 +107,7 @@ char* getRegister(uint8_t reg){
 	timebuffer[4] = date.Date;
 	timebuffer[5] = date.Month;
 	timebuffer[6] = date.Year;
-*/
+
 	if(reg <= 6){
 	  ptr = &timebuffer[(uint8_t)reg];
 	}
@@ -176,71 +176,13 @@ uint8_t ds3231_cmd_decode(i2c_cmd msg){
 		if(size < 0)
 		return HAL_ERROR;
 	}
+	HAL_RTC_SetTime(&hrtc, &time, RTC_FORMAT_BCD);
+		HAL_RTC_SetDate(&hrtc, &date, RTC_FORMAT_BCD);
 	return HAL_OK;
 }
 
-void RTC_msg_decode(i2c_cmd msg){
-	uint8_t aux = msg.cmd_size;
-	//HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
-	//HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
-	switch(msg.data[0]){
-	case 0:
-		if(aux-- > 0){
-			time.Seconds = msg.data[0];
-			__attribute__ ((fallthrough));
-		}else{
-			break;
-		}
-	case 1:
-		if(aux-- > 0){
-			time.Minutes = msg.data[1];
-			__attribute__ ((fallthrough));
-		}else{
-			break;
-		}
-	case 2:
-		if(aux-- > 0){
-			time.Hours = msg.data[2];
-			__attribute__ ((fallthrough));
-		}else{
-			break;
-		}
-	case 3:
-		if(aux-- > 0){
-			date.WeekDay = msg.data[3];
-			__attribute__ ((fallthrough));
-		}else{
-			break;
-		}
-	case 4:
-		if(aux-- > 0){
-			date.Date = msg.data[4];
-			__attribute__ ((fallthrough));
-		}else{
-			break;
-		}
-	case 5:
-		if(aux-- > 0){
-			date.Month = msg.data[5];
-			__attribute__ ((fallthrough));
-		}else{
-			break;
-		}
-	case 6:
-		if(aux-- > 0){
-			date.Year = msg.data[6];
-			__attribute__ ((fallthrough));
-		}else{
-			break;
-		}
-	default:
-		break;
-	}
-	HAL_RTC_SetTime(&hrtc, &time, RTC_FORMAT_BCD);
-	HAL_RTC_SetDate(&hrtc, &date, RTC_FORMAT_BCD);
-}
 
-uint8_t direction = 0;
+
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode){
 	UNUSED(hi2c);
 	switch(TransferDirection){
@@ -248,12 +190,10 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		addr = AddrMatchCode;
 		test.addres = addr;
 		HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
-		direction = 1;
 		break;
 	case I2C_DIRECTION_RECEIVE:
-
 		slaveTransmitBuffer = (uint8_t*)getRegister(slaveReceiveBuffer[0]);
-		sizeOfData = 6;
+		sizeOfData = 8;
 		HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
 
 		break;
@@ -263,15 +203,13 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 }
 
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
+	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
 		test.cmd_size = (uint8_t)(SLAVE_BUFFER_SIZE + 1 - hi2c->XferCount);
 		if(test.cmd_size > 0 && test.cmd_size <= SLAVE_BUFFER_SIZE){
 			memcpy(test.data, slaveReceiveBuffer, test.cmd_size);
-			//ds3231_cmd_decode(test);
-			RTC_msg_decode(test);
+			ds3231_cmd_decode(test);
+			memset(slaveReceiveBuffer, 0, SLAVE_BUFFER_SIZE);
 		}
-
-		//memset(slaveReceiveBuffer, 0, SLAVE_BUFFER_SIZE);
-	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
 
 }
 /* USER CODE END 0 */
@@ -310,7 +248,6 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 	HAL_I2C_EnableListen_IT(&hi2c1);
-	uint8_t count = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
