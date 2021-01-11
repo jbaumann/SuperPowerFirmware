@@ -43,6 +43,11 @@ _Bool i2c_primary_address = true;
 enum I2C_Register i2c_register;
 _Bool i2c_in_progress = false;
 
+
+//data for the RTC implementation
+uint8_t slaveReceiveBuffer[SLAVE_BUFFER_SIZE];
+uint8_t* slaveTransmitBuffer;
+volatile uint16_t sizeOfData;
 /*
  * We use 24 bit for the prog_version, this should be enough.
  */
@@ -294,31 +299,21 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		}
 	} else {
 		// the RTC is accessed
-
-		// TODO Refactor
-		uint8_t *slaveTransmitBuffer;
-
 		switch(TransferDirection){
-		case I2C_DIRECTION_TRANSMIT:
-			//addr = AddrMatchCode;
-			test.address = AddrMatchCode;
-			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
-			break;
-		case I2C_DIRECTION_RECEIVE:
-			switch(AddrMatchCode >> 1){
-			case 20:
-				slaveTransmitBuffer = (uint8_t*)rtc_get_RTC_register(i2c1_buffer[0]);
-				HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, rtc_data_size, I2C_LAST_FRAME);
+			case I2C_DIRECTION_TRANSMIT:
+				addr = AddrMatchCode;
+				test.addres = addr;
+				HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
 				break;
-			case 0x21:
+			case I2C_DIRECTION_RECEIVE:
+				slaveTransmitBuffer = (uint8_t*)getRegister(slaveReceiveBuffer[0]);
+				sizeOfData = 8;
+				HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
+
 				break;
 			default:
 				break;
 			}
-			break;
-			default:
-				break;
-		}
 	}
 }
 
@@ -360,16 +355,22 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 		}
 	} else {
 		// RTC code
-		if(hi2c->XferCount == 32){
-			test.cmd_size = 0;
-		}else{
-			test.cmd_size = (uint8_t)(32 - hi2c->XferCount - 1);
-			memcpy(test.data, i2c1_buffer+1, test.cmd_size);
-		}
-		memset(i2c1_buffer, 0, 31);
-		if(test.cmd_size > 0){
-			rtc_msg_decode(test);
-		}
+		switch(TransferDirection){
+			case I2C_DIRECTION_TRANSMIT:
+				addr = AddrMatchCode;
+				test.addres = addr;
+				HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
+				break;
+			case I2C_DIRECTION_RECEIVE://for now the data size is constant and the data is only from the rtc
+				//but it can be used for all the tasks
+				slaveTransmitBuffer = (uint8_t*)getRegister(slaveReceiveBuffer[0]);
+				sizeOfData = 8;
+				HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
+
+				break;
+			default:
+				break;
+			}
 	}
 
 
@@ -405,6 +406,12 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 	i2c_in_progress = false;
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
+	test.cmd_size = (uint8_t)(SLAVE_BUFFER_SIZE + 1 - hi2c->XferCount);
+	if(test.cmd_size > 0 && test.cmd_size <= SLAVE_BUFFER_SIZE){
+		memcpy(test.data, slaveReceiveBuffer, test.cmd_size);
+		ds3231_cmd_decode(test);
+		memset(slaveReceiveBuffer, 0, SLAVE_BUFFER_SIZE);
+	}
 }
 
 /*

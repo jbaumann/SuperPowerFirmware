@@ -2,11 +2,20 @@
  * i2c_register.h
  *
  *  Created on: Dec 5, 2020
- *      Author: jbaumann
+ *      Author: jbaumann, hector
  */
 
 #ifndef INC_I2C_REGISTER_H_
 #define INC_I2C_REGISTER_H_
+
+//this struct is used by the ds3231 implementation, this struct can
+//hold an arbitrary size of an i2c transmision
+#define SLAVE_BUFFER_SIZE 32
+typedef struct {
+	uint16_t addres;
+	uint8_t cmd_size;
+	uint8_t data[SLAVE_BUFFER_SIZE + 1];
+}i2c_cmd;
 
 /*
  * The ConfigRegister structure holds all registers that are used

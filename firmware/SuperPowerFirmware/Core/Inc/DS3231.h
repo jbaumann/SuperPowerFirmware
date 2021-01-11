@@ -8,6 +8,8 @@
 #ifndef DS3231_H_
 #define DS3231_H_
 
+#include "stdint.h"
+#include "i2c_register.h"
 typedef struct {
 	uint8_t array[6];
 	union{
@@ -60,6 +62,6 @@ typedef struct {
 
 }ds3231;
 
-uint8_t ds3231_cmd_decode();
-
+uint8_t ds3231_cmd_decode(i2c_cmd msg);
+char* getRegister(uint8_t reg);
 #endif /* DS3231_H_ */
