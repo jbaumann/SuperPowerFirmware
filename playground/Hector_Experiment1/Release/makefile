@@ -28,34 +28,34 @@ endif
 
 -include ../makefile.defs
 
-BUILD_ARTIFACT_NAME := SuperPowerFirmware
+BUILD_ARTIFACT_NAME := Hector_experiment
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX := 
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME).$(BUILD_ARTIFACT_EXTENSION)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-SuperPowerFirmware.elf \
+Hector_experiment.elf \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-SuperPowerFirmware.list \
+Hector_experiment.list \
 
 OBJCOPY_BIN += \
-SuperPowerFirmware.bin \
+Hector_experiment.bin \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: SuperPowerFirmware.elf secondary-outputs
+main-build: Hector_experiment.elf secondary-outputs
 
 # Tool invocations
-SuperPowerFirmware.elf: $(OBJS) $(USER_OBJS) /home/hector/Documents/SuperPowerFirmware/playground/Hector_Experiment1/STM32F411RETX_FLASH.ld
-	arm-none-eabi-gcc -o "SuperPowerFirmware.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/hector/Documents/SuperPowerFirmware/playground/Hector_Experiment1/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SuperPowerFirmware.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Hector_experiment.elf: $(OBJS) $(USER_OBJS) /home/hector/Documents/SuperPowerFirmware/playground/Hector_Experiment1/STM32F411RETX_FLASH.ld
+	arm-none-eabi-gcc -o "Hector_experiment.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/hector/Documents/SuperPowerFirmware/playground/Hector_Experiment1/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Hector_experiment.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -64,13 +64,13 @@ default.size.stdout: $(EXECUTABLES)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-SuperPowerFirmware.list: $(EXECUTABLES)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "SuperPowerFirmware.list"
+Hector_experiment.list: $(EXECUTABLES)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "Hector_experiment.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-SuperPowerFirmware.bin: $(EXECUTABLES)
-	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "SuperPowerFirmware.bin"
+Hector_experiment.bin: $(EXECUTABLES)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "Hector_experiment.bin"
 	@echo 'Finished building: $@'
 	@echo ' '
 

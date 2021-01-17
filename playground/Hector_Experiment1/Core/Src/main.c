@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "i2c.h"
 #include "rtc.h"
 #include "usart.h"
@@ -189,13 +190,13 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 	case I2C_DIRECTION_TRANSMIT:
 		addr = AddrMatchCode;
 		test.addres = addr;
-		HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
+		//HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
+		HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
 		break;
 	case I2C_DIRECTION_RECEIVE:
 		slaveTransmitBuffer = (uint8_t*)getRegister(slaveReceiveBuffer[0]);
 		sizeOfData = 8;
-		HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
-
+		HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
 		break;
 	default:
 		break;
@@ -204,14 +205,16 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
-		test.cmd_size = (uint8_t)(SLAVE_BUFFER_SIZE + 1 - hi2c->XferCount);
-		if(test.cmd_size > 0 && test.cmd_size <= SLAVE_BUFFER_SIZE){
+		test.cmd_size = (uint8_t)(SLAVE_BUFFER_SIZE - hi2c->XferCount);
+		if(test.cmd_size > 0 && test.cmd_size < SLAVE_BUFFER_SIZE){
 			memcpy(test.data, slaveReceiveBuffer, test.cmd_size);
 			ds3231_cmd_decode(test);
 			memset(slaveReceiveBuffer, 0, SLAVE_BUFFER_SIZE);
 		}
 
 }
+
+
 /* USER CODE END 0 */
 
 /**
@@ -243,6 +246,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_RTC_Init();
   MX_USART2_UART_Init();
