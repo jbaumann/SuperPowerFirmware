@@ -60,28 +60,35 @@ osThreadId_t I2CHandle;
 const osThreadAttr_t I2C_attributes = {
   .name = "I2C",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for RTC */
 osThreadId_t RTCHandle;
 const osThreadAttr_t RTC_attributes = {
   .name = "RTC",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for StateMachine */
 osThreadId_t StateMachineHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for VoltageMeasurem */
 osThreadId_t VoltageMeasuremHandle;
 const osThreadAttr_t VoltageMeasurem_attributes = {
   .name = "VoltageMeasurem",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
+};
+/* Definitions for LED */
+osThreadId_t LEDHandle;
+const osThreadAttr_t LED_attributes = {
+  .name = "LED",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 2048 * 4
 };
 /* Definitions for I2C_R_Queue */
 osMessageQueueId_t I2C_R_QueueHandle;
@@ -98,6 +105,11 @@ osMessageQueueId_t Statemachine_R_QueueHandle;
 const osMessageQueueAttr_t Statemachine_R_Queue_attributes = {
   .name = "Statemachine_R_Queue"
 };
+/* Definitions for LED_R_Queue */
+osMessageQueueId_t LED_R_QueueHandle;
+const osMessageQueueAttr_t LED_R_Queue_attributes = {
+  .name = "LED_R_Queue"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -108,6 +120,7 @@ void I2C_Task(void *argument);
 void RTC_Task(void *argument);
 void StateMachine_Task(void *argument);
 void VoltageMeasurement_Task(void *argument);
+void LED_Task(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -164,6 +177,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of Statemachine_R_Queue */
   Statemachine_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &Statemachine_R_Queue_attributes);
 
+  /* creation of LED_R_Queue */
+  LED_R_QueueHandle = osMessageQueueNew (16, sizeof(LED_QueueMsg_t*), &LED_R_Queue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -180,6 +196,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of VoltageMeasurem */
   VoltageMeasuremHandle = osThreadNew(VoltageMeasurement_Task, NULL, &VoltageMeasurem_attributes);
+
+  /* creation of LED */
+  LEDHandle = osThreadNew(LED_Task, NULL, &LED_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -315,6 +334,24 @@ void VoltageMeasurement_Task(void *argument)
 
 	}
   /* USER CODE END VoltageMeasurement_Task */
+}
+
+/* USER CODE BEGIN Header_LED_Task */
+/**
+* @brief Function implementing the LED thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_LED_Task */
+void LED_Task(void *argument)
+{
+  /* USER CODE BEGIN LED_Task */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END LED_Task */
 }
 
 /* Private application code --------------------------------------------------*/
