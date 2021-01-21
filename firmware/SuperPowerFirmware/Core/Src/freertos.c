@@ -271,7 +271,9 @@ void VoltageMeasurement_Task(void *argument)
 
 	// on first execution
 	ret_val = ch_init(&hi2c1);
-
+	while(1){
+		osDelay(100);
+	}
 	/* Infinite loop */
 	for (;;) {
 
