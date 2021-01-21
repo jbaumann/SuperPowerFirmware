@@ -17,7 +17,7 @@
 //hold an arbitrary size of an i2c transmision
 #define SLAVE_BUFFER_SIZE 32
 typedef struct {
-	uint16_t addres;
+	uint16_t address;
 	uint8_t cmd_size;
 	uint8_t data[SLAVE_BUFFER_SIZE + 1];
 }i2c_cmd;
