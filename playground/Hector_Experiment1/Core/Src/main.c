@@ -205,12 +205,12 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
-		test.cmd_size = (uint8_t)(SLAVE_BUFFER_SIZE - hi2c->XferCount);
-		if(test.cmd_size > 0 && test.cmd_size < SLAVE_BUFFER_SIZE){
-			memcpy(test.data, slaveReceiveBuffer, test.cmd_size);
-			ds3231_cmd_decode(test);
-			memset(slaveReceiveBuffer, 0, SLAVE_BUFFER_SIZE);
-		}
+	test.cmd_size = (uint8_t)(SLAVE_BUFFER_SIZE - hi2c->XferCount);
+	if(test.cmd_size > 0 && test.cmd_size < SLAVE_BUFFER_SIZE){
+		memcpy(test.data, slaveReceiveBuffer, test.cmd_size);
+		ds3231_cmd_decode(test);
+		memset(slaveReceiveBuffer, 0, SLAVE_BUFFER_SIZE);
+	}
 
 }
 
