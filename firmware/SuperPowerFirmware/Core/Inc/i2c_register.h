@@ -8,6 +8,11 @@
 #ifndef INC_I2C_REGISTER_H_
 #define INC_I2C_REGISTER_H_
 
+/*this include defines __IO and depending on the ide config
+ * it may or may not be included by default, just to be safe
+ * it's included here*/
+#include "stm32f4xx_hal.h"
+
 //this struct is used by the ds3231 implementation, this struct can
 //hold an arbitrary size of an i2c transmision
 #define SLAVE_BUFFER_SIZE 32
