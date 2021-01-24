@@ -228,11 +228,11 @@ void I2C_Task(void *argument)
 	for (;;) {
 		status = osMessageQueueGet(I2C_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
 		if (status == osOK) {
-			printf("Hello receive, ");
-			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			debug_print("I2C_Task receive, ");
+			//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		}
 	}
-	osDelay(1);
+	// osDelay(1);
   /* USER CODE END I2C_Task */
 }
 
@@ -329,6 +329,9 @@ void VoltageMeasurement_Task(void *argument)
 				// it to come online.
 			}
 		}
+		if(ret_val != HAL_OK) {
+			HAL_I2C_EnableListen_IT(&hi2c1);
+		}
 
 		osDelay(ch_update_interval);
 
@@ -345,13 +348,23 @@ void VoltageMeasurement_Task(void *argument)
 /* USER CODE END Header_LED_Task */
 void LED_Task(void *argument)
 {
-  /* USER CODE BEGIN LED_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END LED_Task */
+    /* USER CODE BEGIN LED_Task */
+	LED_QueueMsg_t *msg, *current, *background=NULL;
+	osStatus_t status;
+
+    /* Infinite loop */
+    for(;;)
+    {
+    	if(background == NULL) {
+    		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
+    	} else {
+    		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, 0); // do not wait for message
+    	}
+		if (status == osOK) {
+		    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		}
+    }
+    /* USER CODE END LED_Task */
 }
 
 /* Private application code --------------------------------------------------*/

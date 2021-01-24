@@ -26,16 +26,22 @@ typedef struct {                                // object data type
 
 typedef struct {
 	uint32_t color;
+	uint16_t ontime;
+	uint16_t offtime;
 	uint8_t intensity;
 	uint8_t effect;
-	uint8_t ontime;
-	uint8_t offtime;
+	uint8_t repeat;
 } LED_Step;
 
 typedef struct {
-	LED_Step* steps;
 	uint8_t iterations;
+	LED_Step steps[];
 
 } LED_QueueMsg_t;
+
+
+LED_QueueMsg_t blink_5;
+LED_QueueMsg_t background_off;
+LED_QueueMsg_t blink_second_background;
 
 #endif /* INC_QUEUE_HANDLES_H_ */
