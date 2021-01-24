@@ -35,7 +35,9 @@ typedef struct {
 
 typedef struct {
 	uint8_t iterations;
-	LED_Step steps[];
+	uint8_t number_steps;
+	uint16_t final_delay;
+	LED_Step (*steps)[];
 
 } LED_QueueMsg_t;
 
@@ -43,5 +45,6 @@ typedef struct {
 LED_QueueMsg_t blink_5;
 LED_QueueMsg_t background_off;
 LED_QueueMsg_t blink_second_background;
+LED_QueueMsg_t blink_SOS;
 
 #endif /* INC_QUEUE_HANDLES_H_ */

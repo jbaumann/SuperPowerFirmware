@@ -41,7 +41,7 @@ uint16_t warn_voltage;
 uint16_t restart_voltage;
 uint16_t ups_shutdown_voltage;
 _Bool force_shutdown;
-static const int BLINK_TIME = 100;
+//static const int BLINK_TIME = 100;
 _Bool vext_off_is_shutdown;
 static const int MIN_POWER_LEVEL = 4700;
 uint16_t ext_voltage;
@@ -85,41 +85,6 @@ void voltage_dependent_state_change() {
   }
 }
 
-void handle_state() {
-  // Turn the LED on
-  if (ups_state <= ups_warn_state) {
-    if (primed == 1 || (seconds < timeout) ) {
-      // start the regular blink if either primed is set or we are not yet in a timeout.
-      ledOn_buttonOff();
-    }
-  }
-
-  // change the state depending on the current battery voltage
-  voltage_dependent_state_change();
-
-  // If the button has been pressed or the bat_voltage is lower than the warn voltage
-  // we blink the LED 5 times to signal that the RPi should shut down, if it has not
-  // already signalled that it is doing so
-  if (ups_state <= ups_warn_state) {
-    // we first check whether the Raspberry is already in the shutdown process
-    if(!(should_shutdown & shutdown_cause_rpi_initiated)) {
-      if (should_shutdown > shutdown_cause_rpi_initiated && (seconds < timeout)) {
-        // RPi should take action, possibly shut down. Signal by blinking 5 times
-        blink_led(5, BLINK_TIME);
-      }
-    }
-  }
-
-  act_on_state_change();
-
-  // Turn LED off
-  if (ups_state <= ups_warn_to_shutdown) {
-    // allow the button functionality as long as possible and even if not primed
-    ledOff_buttonOn();
-  }
-}
-
-
 /*
    Act on the current state
  */
@@ -130,25 +95,25 @@ void act_on_state_change() {
     // immediately turn off the system if force_shutdown is set
     if (primed == 1) {
       if (force_shutdown != 0) {
-        ups_off();
+//        ups_off();
       }
     }
     ups_state = ups_shutdown_state;
   }
 
   if (ups_state == ups_shutdown_state) {
-    ledOff_buttonOff();
+//    ledOff_buttonOff();
   } else if (ups_state == ups_warn_state) {
     // The RPi has been warned using the should_shutdown variable
     // we simply let it shutdown even if it does not set SL_INITIATED
 
-    reset_counter_Safe();
+//    reset_counter_Safe();
   } else if (ups_state == ups_shutdown_to_running) {
     // we have recovered from a shutdown and are now at a safe voltage
     if (primed == 1) {
-      ups_on();
+//      ups_on();
     }
-    reset_counter_Safe();
+//    reset_counter_Safe();
     ups_state = ups_running_state;
     should_shutdown = shutdown_cause_none;
   } else if (ups_state == ups_warn_to_running) {
@@ -175,14 +140,49 @@ void act_on_state_change() {
       if (primed == 1) {
         // RPi has not accessed the I2C interface for more than timeout seconds.
         // We restart it. Signal restart by blinking ten times
-        blink_led(10, BLINK_TIME / 2);
-        restart_raspberry();
+//        blink_led(10, BLINK_TIME / 2);
+//        restart_raspberry();
       }
 
-      reset_counter_Safe();
+//      reset_counter_Safe();
     }
   }
 }
+
+void handle_state() {
+  // Turn the LED on
+  if (ups_state <= ups_warn_state) {
+    if (primed == 1 || (seconds < timeout) ) {
+      // start the regular blink if either primed is set or we are not yet in a timeout.
+//      ledOn_buttonOff();
+    }
+  }
+
+  // change the state depending on the current battery voltage
+  voltage_dependent_state_change();
+
+  // If the button has been pressed or the bat_voltage is lower than the warn voltage
+  // we blink the LED 5 times to signal that the RPi should shut down, if it has not
+  // already signalled that it is doing so
+  if (ups_state <= ups_warn_state) {
+    // we first check whether the Raspberry is already in the shutdown process
+    if(!(should_shutdown & shutdown_cause_rpi_initiated)) {
+      if (should_shutdown > shutdown_cause_rpi_initiated && (seconds < timeout)) {
+        // RPi should take action, possibly shut down. Signal by blinking 5 times
+//        blink_led(5, BLINK_TIME);
+      }
+    }
+  }
+
+  act_on_state_change();
+
+  // Turn LED off
+  if (ups_state <= ups_warn_to_shutdown) {
+    // allow the button functionality as long as possible and even if not primed
+//    ledOff_buttonOn();
+  }
+}
+
 
 /*
    When we get an I2C communication then this might change our state (because now we

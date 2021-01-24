@@ -184,6 +184,9 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
 		}
 	} else {
 		// access to the SPECIAL_16BIT struct
+		LED_QueueMsg_t *msg = &blink_SOS;
+
+		osMessageQueuePut(LED_R_QueueHandle, &msg, 0, 0);
 
 		// Special register requesting the version number
 		if(register_number == i2creg_version) {

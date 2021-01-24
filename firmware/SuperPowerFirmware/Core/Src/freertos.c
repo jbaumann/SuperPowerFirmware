@@ -349,20 +349,56 @@ void VoltageMeasurement_Task(void *argument)
 void LED_Task(void *argument)
 {
     /* USER CODE BEGIN LED_Task */
-	LED_QueueMsg_t *msg, *current, *background=NULL;
+	LED_QueueMsg_t *msg;
+	LED_QueueMsg_t *current = NULL, *background = &blink_second_background;
 	osStatus_t status;
+	uint32_t waiting_time = 0;
 
-    /* Infinite loop */
     for(;;)
     {
     	if(background == NULL) {
-    		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
+    		waiting_time = osWaitForever; // wait for message
     	} else {
-    		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, 0); // do not wait for message
+    		waiting_time = 0; // do not wait for message
     	}
+		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, waiting_time); // wait for message
 		if (status == osOK) {
-		    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			if(msg->iterations == 0) {
+				background = NULL;
+				current = NULL;
+			} else if(msg->iterations == 255) {
+				background = msg;
+				current = background;
+			} else {
+				current = msg;
+			}
+		} else {
+			current = background;
 		}
+
+		if(current != NULL) {
+			uint8_t iterations = current->iterations;
+			if(iterations == 0xFF) iterations = 1;
+
+			for(uint8_t i = 0; i < iterations; i++) {
+				for(uint8_t s = 0; s < current->number_steps; s++) {
+					LED_Step step = ((LED_Step *)(current->steps))[s];
+					uint8_t repeat = step.repeat;
+					if(repeat == 0) repeat = 1;
+
+					for(uint8_t r = 0; r < repeat; r++) {
+						HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+						osDelay(step.ontime);
+						HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+						osDelay(step.offtime);
+					}
+				}
+			}
+			if(current->final_delay != 0) {
+				osDelay(current->final_delay);
+			}
+		}
+		current = NULL;
     }
     /* USER CODE END LED_Task */
 }
