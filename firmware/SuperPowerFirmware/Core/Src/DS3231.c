@@ -8,9 +8,10 @@
 #include "rtc.h"
 #include "i2c_register.h"
 #include "stdint.h"
+#include "cmsis_os.h"
+#include "queue.h"
+#include <string.h>
 
-RTC_TimeTypeDef time;
-RTC_DateTypeDef date;
 char timebuffer[] = {1,2,3,4,5,6,7,8,0,0,0};
 
 uint8_t ds3231_cmd_decode(i2c_cmd msg){
@@ -80,7 +81,8 @@ uint8_t ds3231_cmd_decode(i2c_cmd msg){
 
 char* getRegister(uint8_t reg){
 	char* ptr = NULL;
-
+	RTC_TimeTypeDef time;
+	RTC_DateTypeDef date;
 	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
 	HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
 
@@ -96,4 +98,28 @@ char* getRegister(uint8_t reg){
 	  ptr = &timebuffer[(uint8_t)reg];
 	}
 	return ptr;
+}
+
+extern osMessageQueueId_t I2C_R_QueueHandle;
+
+void RTC_Task(void *argument)
+{
+	i2c_cmd cmd;
+	//i2c_cmd_dynamic response;
+	//response.data = pvPortMalloc(10 * sizeof(uint8_t));
+  for(;;)
+  {
+	 if(pdTRUE == xQueueReceive(RTC_R_QueueHandle, &cmd, 100)){
+		 //cmd recevived by the task
+		 if(cmd.cmd_size == 2){
+			 memcpy(cmd.data, (uint8_t*)getRegister(cmd.data[1]),8);
+			 //cmd.data = (uint8_t*)getRegister(cmd.data[1]);
+			 cmd.cmd_size = 8;
+			 //xQueueSend(I2C_R_QueueHandle, &cmd,100);
+			 HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, cmd.data, cmd.cmd_size, I2C_LAST_FRAME);
+		 }else{
+			 ds3231_cmd_decode(cmd);
+		 }
+	 }
+  }
 }

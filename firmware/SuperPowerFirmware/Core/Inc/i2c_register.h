@@ -22,6 +22,11 @@ typedef struct {
 	uint8_t data[SLAVE_BUFFER_SIZE + 1];
 }i2c_cmd;
 
+typedef struct {
+	uint16_t address;
+	uint8_t cmd_size;
+	uint8_t* data;
+}i2c_cmd_dynamic;
 /*
  * The ConfigRegister structure holds all registers that are used
  * to set values that configure the uC. The StatusRegister structure

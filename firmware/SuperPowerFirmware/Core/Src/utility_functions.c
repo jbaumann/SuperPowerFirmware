@@ -37,6 +37,7 @@ void jumpToBootloader() {
  * screen /dev/cu.usbmodem14103 115200,cs8
  */
 #ifdef DEBUG
+//TODO beter config for FreeRTOS debugging
 /*
  * Use debug_print to print debug messages, see main.h
  */

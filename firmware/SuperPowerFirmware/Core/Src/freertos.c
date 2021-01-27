@@ -156,10 +156,10 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of I2C_R_Queue */
-  I2C_R_QueueHandle = osMessageQueueNew (128, sizeof(uint16_t), &I2C_R_Queue_attributes);
+  I2C_R_QueueHandle = osMessageQueueNew (5, sizeof(i2c_cmd), &I2C_R_Queue_attributes);
 
   /* creation of RTC_R_Queue */
-  RTC_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &RTC_R_Queue_attributes);
+  RTC_R_QueueHandle = osMessageQueueNew (2, sizeof(i2c_cmd), &RTC_R_Queue_attributes);
 
   /* creation of Statemachine_R_Queue */
   Statemachine_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &Statemachine_R_Queue_attributes);
@@ -224,7 +224,7 @@ void I2C_Task(void *argument)
 * @retval None
 */
 /* USER CODE END Header_RTC_Task */
-void RTC_Task(void *argument)
+__weak void RTC_Task(void *argument)
 {
   /* USER CODE BEGIN RTC_Task */
   /* Infinite loop */
@@ -312,7 +312,6 @@ void VoltageMeasurement_Task(void *argument)
 				// it to come online.
 			}
 		}
-
 		osDelay(ch_update_interval);
 
 	}

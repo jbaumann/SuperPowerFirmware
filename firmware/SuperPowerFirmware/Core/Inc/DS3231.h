@@ -10,6 +10,9 @@
 
 #include "stdint.h"
 #include "i2c_register.h"
+#include "cmsis_os.h"
+
+
 typedef struct {
 	uint8_t array[6];
 	union{
@@ -61,6 +64,8 @@ typedef struct {
 	}year;
 
 }ds3231;
+
+extern osMessageQueueId_t RTC_R_QueueHandle;
 
 uint8_t ds3231_cmd_decode(i2c_cmd msg);
 char* getRegister(uint8_t reg);

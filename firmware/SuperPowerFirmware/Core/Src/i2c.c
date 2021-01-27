@@ -32,7 +32,11 @@
 #include "cmsis_os.h"
 #include "queue_handles.h"
 #include "ch_bq25895.h"
+
 #include "DS3231.h"
+#include "queue.h"
+
+
 
 
 /*
@@ -49,6 +53,8 @@ i2c_cmd cmd;
 uint8_t slaveReceiveBuffer[SLAVE_BUFFER_SIZE];
 uint8_t* slaveTransmitBuffer;
 volatile uint16_t sizeOfData;
+_Bool i2c_in_progress_rtc = false;
+
 /*
  * We use 24 bit for the prog_version, this should be enough.
  */
@@ -57,6 +63,8 @@ uint32_t prog_version = (MAJOR << 16) | (MINOR << 8) | PATCH;
 /* USER CODE END 0 */
 
 I2C_HandleTypeDef hi2c1;
+DMA_HandleTypeDef hdma_i2c1_rx;
+DMA_HandleTypeDef hdma_i2c1_tx;
 
 /* I2C1 init function */
 void MX_I2C1_Init(void)
@@ -102,6 +110,43 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
     /* I2C1 clock enable */
     __HAL_RCC_I2C1_CLK_ENABLE();
 
+    /* I2C1 DMA Init */
+    /* I2C1_RX Init */
+    hdma_i2c1_rx.Instance = DMA1_Stream0;
+    hdma_i2c1_rx.Init.Channel = DMA_CHANNEL_1;
+    hdma_i2c1_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_i2c1_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_i2c1_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_i2c1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_i2c1_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_i2c1_rx.Init.Mode = DMA_CIRCULAR;
+    hdma_i2c1_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_i2c1_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_i2c1_rx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(i2cHandle,hdmarx,hdma_i2c1_rx);
+
+    /* I2C1_TX Init */
+    hdma_i2c1_tx.Instance = DMA1_Stream1;
+    hdma_i2c1_tx.Init.Channel = DMA_CHANNEL_0;
+    hdma_i2c1_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_i2c1_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_i2c1_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_i2c1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_i2c1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_i2c1_tx.Init.Mode = DMA_CIRCULAR;
+    hdma_i2c1_tx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_i2c1_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_i2c1_tx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(i2cHandle,hdmatx,hdma_i2c1_tx);
+
     /* I2C1 interrupt Init */
     HAL_NVIC_SetPriority(I2C1_EV_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
@@ -131,6 +176,10 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6);
 
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_7);
+
+    /* I2C1 DMA DeInit */
+    HAL_DMA_DeInit(i2cHandle->hdmarx);
+    HAL_DMA_DeInit(i2cHandle->hdmatx);
 
     /* I2C1 interrupt Deinit */
     HAL_NVIC_DisableIRQ(I2C1_EV_IRQn);
@@ -275,6 +324,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		uint16_t AddrMatchCode) {
 
 	i2c_primary_address = (hi2c->Init.OwnAddress1 == AddrMatchCode);
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	if (i2c_primary_address) {
 		// the UPS is accessed
@@ -303,14 +353,24 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		switch(TransferDirection){
 		case I2C_DIRECTION_TRANSMIT:
 			cmd.address = AddrMatchCode;
-			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
-			//HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
+			//HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
+			i2c_in_progress_rtc = true;
+			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
 			break;
 		case I2C_DIRECTION_RECEIVE:
-			slaveTransmitBuffer = (uint8_t*)getRegister(slaveReceiveBuffer[0]);
-			sizeOfData = 8;
-			HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
-			//HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
+			if(i2c_in_progress_rtc == true){
+				//slaveTransmitBuffer = (uint8_t*)getRegister(slaveReceiveBuffer[1]);
+				//sizeOfData = 8;
+				//HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
+				cmd.cmd_size=2;
+				memcpy(cmd.data, slaveReceiveBuffer, cmd.cmd_size);
+				xQueueSendFromISR(RTC_R_QueueHandle, &cmd, &xHigherPriorityTaskWoken);
+				if(xHigherPriorityTaskWoken){
+					portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+				}
+				i2c_in_progress_rtc = false;
+
+			}
 			break;
 		default:
 			break;
@@ -392,13 +452,19 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
  */
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 	i2c_in_progress = false;
-	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
-	cmd.cmd_size = (uint8_t)(SLAVE_BUFFER_SIZE - hi2c->XferCount);
+	i2c_in_progress_rtc = false;
+	cmd.cmd_size = (hi2c->XferCount == 0) ? 2 : (uint8_t)(SLAVE_BUFFER_SIZE - hi2c->XferCount);
 	if(cmd.cmd_size > 0 && cmd.cmd_size < SLAVE_BUFFER_SIZE){
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		memcpy(cmd.data, slaveReceiveBuffer, cmd.cmd_size);
-		ds3231_cmd_decode(cmd);
+		xQueueSendFromISR(RTC_R_QueueHandle, &cmd, &xHigherPriorityTaskWoken);
+		//ds3231_cmd_decode(cmd);
 		memset(slaveReceiveBuffer, 0, SLAVE_BUFFER_SIZE);
+		if(xHigherPriorityTaskWoken){
+			portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+		}
 	}
+	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
 }
 
 /*
