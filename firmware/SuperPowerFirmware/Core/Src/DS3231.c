@@ -114,9 +114,9 @@ void RTC_Task(void *argument)
 		 if(cmd.cmd_size == 2){
 			 memcpy(cmd.data, (uint8_t*)getRegister(cmd.data[1]),8);
 			 //cmd.data = (uint8_t*)getRegister(cmd.data[1]);
-			 cmd.cmd_size = 8;
-			 //xQueueSend(I2C_R_QueueHandle, &cmd,100);
-			 HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, cmd.data, cmd.cmd_size, I2C_LAST_FRAME);
+			 cmd.cmd_size = 10;
+			 xQueueSend(I2C_R_QueueHandle, &cmd,100);
+			 //HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, cmd.data, cmd.cmd_size, I2C_LAST_FRAME);
 		 }else{
 			 ds3231_cmd_decode(cmd);
 		 }

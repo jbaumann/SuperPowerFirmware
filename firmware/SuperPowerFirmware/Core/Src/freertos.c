@@ -31,6 +31,8 @@
 #include "i2c.h"
 #include "ch_bq25895.h"
 #include "rtc.h"
+#include "queue.h"
+#include <stdbool.h>
 
 // JB TODO move to external impl.
 #include "rtc.h"
@@ -156,7 +158,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of I2C_R_Queue */
-  I2C_R_QueueHandle = osMessageQueueNew (5, sizeof(i2c_cmd), &I2C_R_Queue_attributes);
+  I2C_R_QueueHandle = osMessageQueueNew (1, sizeof(i2c_cmd), &I2C_R_Queue_attributes);
 
   /* creation of RTC_R_Queue */
   RTC_R_QueueHandle = osMessageQueueNew (2, sizeof(i2c_cmd), &RTC_R_Queue_attributes);
@@ -197,23 +199,34 @@ void MX_FREERTOS_Init(void) {
   * @param  argument: Not used
   * @retval None
   */
+
+uint8_t buffer[SLAVE_BUFFER_SIZE];
+uint8_t size;
 /* USER CODE END Header_I2C_Task */
 void I2C_Task(void *argument)
 {
   /* USER CODE BEGIN I2C_Task */
 	I2C_QueueMsg_t msg;
 	osStatus_t status;
+	i2c_cmd cmd;
+	uint8_t qs = 0;
 
-
+	extern _Bool i2c_in_progress_rtc;
 	/* Infinite loop */
+	xQueueReceive(I2C_R_QueueHandle, &cmd, 100);
 	for (;;) {
-		status = osMessageQueueGet(I2C_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
-		if (status == osOK) {
-			printf("Hello receive, ");
-			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		if(pdTRUE == xQueueReceive(I2C_R_QueueHandle, &cmd, 100)){
+			qs = uxQueueMessagesWaiting(I2C_R_QueueHandle);
+			memcpy(buffer, cmd.data,cmd.cmd_size);
+			size = cmd.cmd_size;
+			//HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, buffer, size, I2C_LAST_FRAME);
 		}
+		//status = osMessageQueueGet(I2C_R_QueueHandle, &cmd, NULL, osWaitForever); // wait for message
+		//if (status == osOK) {
+		//	printf("Hello receive, ");
+		//	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		//}
 	}
-	osDelay(1);
   /* USER CODE END I2C_Task */
 }
 
@@ -270,7 +283,7 @@ void VoltageMeasurement_Task(void *argument)
 
 
 	// on first execution
-	ret_val = ch_init(&hi2c1);
+	//ret_val = ch_init(&hi2c1);
 	while(1){
 		osDelay(100);
 	}
