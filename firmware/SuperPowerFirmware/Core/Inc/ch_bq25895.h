@@ -9,8 +9,6 @@
 #ifndef INC_CH_BQ25895_H_
 #define INC_CH_BQ25895_H_
 
-#include "main.h"
-
 /*
  * Intervals for communication with the charger
  */

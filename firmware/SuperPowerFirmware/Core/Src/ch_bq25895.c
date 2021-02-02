@@ -5,6 +5,7 @@
  *      Author: jbaumann
  */
 
+#include "main.h"
 #include "ch_bq25895.h"
 
 /*

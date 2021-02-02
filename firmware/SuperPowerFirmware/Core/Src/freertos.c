@@ -60,28 +60,35 @@ osThreadId_t I2CHandle;
 const osThreadAttr_t I2C_attributes = {
   .name = "I2C",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for RTC */
 osThreadId_t RTCHandle;
 const osThreadAttr_t RTC_attributes = {
   .name = "RTC",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for StateMachine */
 osThreadId_t StateMachineHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for VoltageMeasurem */
 osThreadId_t VoltageMeasuremHandle;
 const osThreadAttr_t VoltageMeasurem_attributes = {
   .name = "VoltageMeasurem",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
+};
+/* Definitions for LED */
+osThreadId_t LEDHandle;
+const osThreadAttr_t LED_attributes = {
+  .name = "LED",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 2048 * 4
 };
 /* Definitions for I2C_R_Queue */
 osMessageQueueId_t I2C_R_QueueHandle;
@@ -98,6 +105,11 @@ osMessageQueueId_t Statemachine_R_QueueHandle;
 const osMessageQueueAttr_t Statemachine_R_Queue_attributes = {
   .name = "Statemachine_R_Queue"
 };
+/* Definitions for LED_R_Queue */
+osMessageQueueId_t LED_R_QueueHandle;
+const osMessageQueueAttr_t LED_R_Queue_attributes = {
+  .name = "LED_R_Queue"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -108,6 +120,7 @@ void I2C_Task(void *argument);
 void RTC_Task(void *argument);
 void StateMachine_Task(void *argument);
 void VoltageMeasurement_Task(void *argument);
+void LED_Task(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -164,6 +177,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of Statemachine_R_Queue */
   Statemachine_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &Statemachine_R_Queue_attributes);
 
+  /* creation of LED_R_Queue */
+  LED_R_QueueHandle = osMessageQueueNew (16, sizeof(LED_QueueMsg_t*), &LED_R_Queue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -180,6 +196,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of VoltageMeasurem */
   VoltageMeasuremHandle = osThreadNew(VoltageMeasurement_Task, NULL, &VoltageMeasurem_attributes);
+
+  /* creation of LED */
+  LEDHandle = osThreadNew(LED_Task, NULL, &LED_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -209,11 +228,11 @@ void I2C_Task(void *argument)
 	for (;;) {
 		status = osMessageQueueGet(I2C_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
 		if (status == osOK) {
-			printf("Hello receive, ");
-			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			debug_print("I2C_Task receive, ");
+			//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		}
 	}
-	osDelay(1);
+	// osDelay(1);
   /* USER CODE END I2C_Task */
 }
 
@@ -310,11 +329,78 @@ void VoltageMeasurement_Task(void *argument)
 				// it to come online.
 			}
 		}
+		if(ret_val != HAL_OK) {
+			HAL_I2C_EnableListen_IT(&hi2c1);
+		}
 
 		osDelay(ch_update_interval);
 
 	}
   /* USER CODE END VoltageMeasurement_Task */
+}
+
+/* USER CODE BEGIN Header_LED_Task */
+/**
+* @brief Function implementing the LED thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_LED_Task */
+void LED_Task(void *argument)
+{
+    /* USER CODE BEGIN LED_Task */
+	LED_QueueMsg_t *msg;
+	LED_QueueMsg_t *current = NULL, *background = &blink_second_background;
+	osStatus_t status;
+	uint32_t waiting_time = 0;
+
+    for(;;)
+    {
+    	if(background == NULL) {
+    		waiting_time = osWaitForever; // wait for message
+    	} else {
+    		waiting_time = 0; // do not wait for message
+    	}
+		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, waiting_time); // wait for message
+		if (status == osOK) {
+			if(msg->iterations == 0) {
+				background = NULL;
+				current = NULL;
+			} else if(msg->iterations == 255) {
+				background = msg;
+				current = background;
+			} else {
+				current = msg;
+			}
+		} else {
+			current = background;
+		}
+
+		if(current != NULL) {
+			uint8_t iterations = current->iterations;
+			if(iterations == 0xFF) iterations = 1;
+
+			for(uint8_t i = 0; i < iterations; i++) {
+				for(uint8_t s = 0; s < current->number_steps; s++) {
+					LED_Step step = ((LED_Step *)(current->steps))[s];
+					uint8_t repeat = step.repeat;
+					if(repeat == 0) repeat = 1;
+
+					for(uint8_t r = 0; r < repeat; r++) {
+						HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+						osDelay(step.ontime);
+						HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+						osDelay(step.offtime);
+					}
+				}
+			}
+			if(current->final_delay != 0) {
+				osDelay(current->final_delay);
+			}
+		}
+		current = NULL;
+    }
+    /* USER CODE END LED_Task */
 }
 
 /* Private application code --------------------------------------------------*/

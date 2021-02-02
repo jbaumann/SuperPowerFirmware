@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under Ultimate Liberty license
@@ -146,54 +146,53 @@ void rtc_msg_decode(I2C_Cmd msg){
 	uint8_t aux = msg.cmd_size;
 	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
 	HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
-
 	switch(msg.data[0]){
 	case 0:
 		if(aux-- > 0){
 			time.Seconds = msg.data[0];
-//			__attribute__ ((fallthrough));
+			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 1:
 		if(aux-- > 0){
 			time.Minutes = msg.data[1];
-//			__attribute__ ((fallthrough));
+			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 2:
 		if(aux-- > 0){
 			time.Hours = msg.data[2];
-//			__attribute__ ((fallthrough));
+			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 3:
 		if(aux-- > 0){
 			date.WeekDay = msg.data[3];
-//			__attribute__ ((fallthrough));
+			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 4:
 		if(aux-- > 0){
 			date.Date = msg.data[4];
-//			__attribute__ ((fallthrough));
+			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 5:
 		if(aux-- > 0){
 			date.Month = msg.data[5];
-//			__attribute__ ((fallthrough));
+			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 6:
 		if(aux-- > 0){
 			date.Year = msg.data[6];
-//			__attribute__ ((fallthrough));
+			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}

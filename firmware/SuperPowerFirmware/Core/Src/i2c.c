@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under Ultimate Liberty license
@@ -43,6 +43,12 @@ _Bool i2c_primary_address = true;
 enum I2C_Register i2c_register;
 _Bool i2c_in_progress = false;
 
+// TODO Refactor
+uint8_t slaveReceiveBuffer[32];
+uint8_t *slaveTransmitBuffer;
+__IO uint16_t sizeOfData;
+
+
 /*
  * We use 24 bit for the prog_version, this should be enough.
  */
@@ -62,7 +68,7 @@ void MX_I2C1_Init(void)
   hi2c1.Init.OwnAddress1 = 128;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_ENABLE;
-  hi2c1.Init.OwnAddress2 = 130;
+  hi2c1.Init.OwnAddress2 = 40;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
   hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
@@ -178,6 +184,9 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
 		}
 	} else {
 		// access to the SPECIAL_16BIT struct
+		LED_QueueMsg_t *msg = &blink_SOS;
+
+		osMessageQueuePut(LED_R_QueueHandle, &msg, 0, 0);
 
 		// Special register requesting the version number
 		if(register_number == i2creg_version) {
@@ -296,19 +305,18 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		// the RTC is accessed
 
 		// TODO Refactor
-		uint8_t *slaveTransmitBuffer;
-
 		switch(TransferDirection){
 		case I2C_DIRECTION_TRANSMIT:
 			//addr = AddrMatchCode;
 			test.address = AddrMatchCode;
-			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
+			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, 32, I2C_FIRST_FRAME);
 			break;
 		case I2C_DIRECTION_RECEIVE:
 			switch(AddrMatchCode >> 1){
 			case 20:
-				slaveTransmitBuffer = (uint8_t*)rtc_get_RTC_register(i2c1_buffer[0]);
-				HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, rtc_data_size, I2C_LAST_FRAME);
+				slaveTransmitBuffer = (uint8_t*)rtc_get_RTC_register(slaveReceiveBuffer[0]);
+				sizeOfData = 6;
+				HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
 				break;
 			case 0x21:
 				break;
@@ -360,16 +368,6 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 		}
 	} else {
 		// RTC code
-		if(hi2c->XferCount == 32){
-			test.cmd_size = 0;
-		}else{
-			test.cmd_size = (uint8_t)(32 - hi2c->XferCount - 1);
-			memcpy(test.data, i2c1_buffer+1, test.cmd_size);
-		}
-		memset(i2c1_buffer, 0, 31);
-		if(test.cmd_size > 0){
-			rtc_msg_decode(test);
-		}
 	}
 
 
@@ -403,7 +401,22 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
  * We restart the I2C listening mode
  */
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
-	i2c_in_progress = false;
+	// TODO Check whether address can be determined from hi2c
+	if(i2c_primary_address) {
+		i2c_in_progress = false;
+	} else {
+		// RTC Code
+		if(hi2c->XferCount == 32){
+			test.cmd_size = 0;
+		}else{
+			test.cmd_size = (uint8_t)(32 - hi2c->XferCount - 1);
+			memcpy(test.data, slaveReceiveBuffer+1, test.cmd_size);
+		}
+		memset(slaveReceiveBuffer, 0, 31);
+		if(test.cmd_size > 0){
+			rtc_msg_decode(test);
+		}
+	}
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
 }
 
