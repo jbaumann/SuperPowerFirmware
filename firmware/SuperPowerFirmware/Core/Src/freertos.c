@@ -350,7 +350,7 @@ void LED_Task(void *argument)
 {
     /* USER CODE BEGIN LED_Task */
 	LED_QueueMsg_t *msg;
-	LED_QueueMsg_t *current = NULL, *background = &blink_second_background;
+	LED_QueueMsg_t *current = NULL, *background = blink_second_background;
 	osStatus_t status;
 	uint32_t waiting_time = 0;
 
@@ -387,10 +387,15 @@ void LED_Task(void *argument)
 					if(repeat == 0) repeat = 1;
 
 					for(uint8_t r = 0; r < repeat; r++) {
-						HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-						osDelay(step.ontime);
-						HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-						osDelay(step.offtime);
+						if(step.ontime != 0)
+						{
+							HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+							osDelay(step.ontime);
+						}
+						if(step.offtime != 0) {
+							HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+							osDelay(step.offtime);
+						}
 					}
 				}
 			}
