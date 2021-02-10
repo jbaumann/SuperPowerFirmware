@@ -5,10 +5,11 @@
  *      Author: jbaumann
  */
 
-// TODO extract the LED_Pattern definition
 #include "main.h"
 #include "cmsis_os.h"
 #include "queue_handles.h"
+
+#define NUM_STEPS(steps) (sizeof(steps)/sizeof(LED_Step))
 
 /*
  * The Step definitions describe a single LED pattern
@@ -71,32 +72,42 @@ LED_Step _blink_SOS[] = {
 		.offtime   = 200,
 		.repeat    = 3,
 		},
+		{
+		.ontime    = 0,
+		.offtime   = 800,
+		.repeat    = 1,
+		},
 };
 
 /*
  * The full messages describe a number of patterns over which
  * a number of iterations should be made
  */
-LED_QueueMsg_t blink_5 = {
+LED_QueueMsg_t _blink_5 = {
 		.iterations = 5,
-		.number_steps = 1,
 		.steps = &_blink_short,
+		.number_steps = NUM_STEPS(_blink_short),
 };
+LED_QueueMsg_t *blink_5 = &_blink_5;
 
-LED_QueueMsg_t background_off = {
+LED_QueueMsg_t _background_off = {
 		.iterations = 0,
 };
+LED_QueueMsg_t *background_off = &_background_off;
 
 
-LED_QueueMsg_t blink_second_background = {
+LED_QueueMsg_t _blink_second_background = {
 		.iterations = 255,
-		.number_steps = 1,
 		.steps = &_blink_long,
+		.number_steps = NUM_STEPS(_blink_long),
 };
+LED_QueueMsg_t *blink_second_background = &_blink_second_background;
 
-LED_QueueMsg_t blink_SOS = {
+
+LED_QueueMsg_t _blink_SOS_3 = {
 		.iterations = 3,
-		.number_steps = 3,
 		.steps = &_blink_SOS,
+		.number_steps = NUM_STEPS(_blink_SOS),
 		.final_delay = 400,
 };
+LED_QueueMsg_t *blink_SOS_3 = &_blink_SOS_3;

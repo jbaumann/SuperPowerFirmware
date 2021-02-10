@@ -41,10 +41,9 @@ typedef struct {
 
 } LED_QueueMsg_t;
 
-
-LED_QueueMsg_t blink_5;
-LED_QueueMsg_t background_off;
-LED_QueueMsg_t blink_second_background;
-LED_QueueMsg_t blink_SOS;
+LED_QueueMsg_t *blink_5;
+LED_QueueMsg_t *background_off;
+LED_QueueMsg_t *blink_second_background;
+LED_QueueMsg_t *blink_SOS_3;
 
 #endif /* INC_QUEUE_HANDLES_H_ */
