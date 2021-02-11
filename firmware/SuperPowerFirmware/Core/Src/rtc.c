@@ -117,14 +117,12 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
 /* USER CODE BEGIN 1 */
 
 char* rtc_get_RTC_register(uint8_t reg){
-	// TODO Review lines
-	//ds3231 rt;
-	//rt.seconds.seconds = 0;
-
-	//TODO Refactor
 	char* ptr = NULL;
+	RTC_TimeTypeDef time;
+	RTC_DateTypeDef date;
 	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
 	HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
+
 	timebuffer[0] = time.Seconds;
 	timebuffer[1] = time.Minutes;
 	timebuffer[2] = time.Hours;
@@ -132,10 +130,12 @@ char* rtc_get_RTC_register(uint8_t reg){
 	timebuffer[4] = date.Date;
 	timebuffer[5] = date.Month;
 	timebuffer[6] = date.Year;
+
 	if(reg <= 6){
-		ptr = &timebuffer[(uint8_t)reg];
+	  ptr = &timebuffer[(uint8_t)reg];
 	}
 	return ptr;
+
 }
 
 

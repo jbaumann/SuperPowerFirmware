@@ -12,6 +12,7 @@
 
 osMessageQueueId_t I2C_R_QueueHandle;
 osMessageQueueId_t LED_R_QueueHandle;
+osMessageQueueId_t RTC_R_QueueHandle;
 
 
 typedef struct {                                // object data type

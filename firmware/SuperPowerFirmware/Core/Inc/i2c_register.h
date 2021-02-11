@@ -8,6 +8,22 @@
 #ifndef INC_I2C_REGISTER_H_
 #define INC_I2C_REGISTER_H_
 
+//this struct is used by the ds3231 implementation, this struct can
+//hold an arbitrary size of an i2c transmision
+#define SLAVE_BUFFER_SIZE 32
+typedef struct {
+	uint16_t address;
+	uint8_t cmd_size;
+	uint8_t data[SLAVE_BUFFER_SIZE + 1];
+}I2C_Cmd;
+
+//typedef struct {
+//	uint16_t address;
+//	uint8_t cmd_size;
+//	uint8_t* data;
+//}I2C_Cmd_Dynamic;
+
+
 /*
  * The ConfigRegister structure holds all registers that are used
  * to set values that configure the uC. The StatusRegister structure

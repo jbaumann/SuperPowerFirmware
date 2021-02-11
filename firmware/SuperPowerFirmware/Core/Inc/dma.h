@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * @file    rtc.h
+  * @file    dma.h
   * @brief   This file contains all the function prototypes for
-  *          the rtc.c file
+  *          the dma.c file
   ******************************************************************************
   * @attention
   *
@@ -17,8 +17,8 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __RTC_H__
-#define __RTC_H__
+#ifndef __DMA_H__
+#define __DMA_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,31 +27,19 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
+/* DMA memory to memory transfer handles -------------------------------------*/
+
 /* USER CODE BEGIN Includes */
-#include "i2c.h"
 
 /* USER CODE END Includes */
-
-extern RTC_HandleTypeDef hrtc;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
-void MX_RTC_Init(void);
+void MX_DMA_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
-static const uint8_t rtc_data_size = 6;
-
-char* rtc_get_RTC_register(uint8_t reg);
-void rtc_msg_decode(I2C_Cmd msg);
-
-//uint32_t rtc_read_backup_reg(uint32_t backup_register);
-//void rtc_write_backup_reg(uint32_t backup_register, uint32_t data);
-
-void backup_registers();
-void restore_registers();
 
 /* USER CODE END Prototypes */
 
@@ -59,6 +47,6 @@ void restore_registers();
 }
 #endif
 
-#endif /* __RTC_H__ */
+#endif /* __DMA_H__ */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

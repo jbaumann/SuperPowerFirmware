@@ -348,7 +348,7 @@ void VoltageMeasurement_Task(void *argument)
 /* USER CODE END Header_LED_Task */
 void LED_Task(void *argument)
 {
-    /* USER CODE BEGIN LED_Task */
+  /* USER CODE BEGIN LED_Task */
 	LED_QueueMsg_t *msg;
 	LED_QueueMsg_t *current = NULL, *background = blink_second_background;
 	osStatus_t status;
@@ -405,7 +405,7 @@ void LED_Task(void *argument)
 		}
 		current = NULL;
     }
-    /* USER CODE END LED_Task */
+  /* USER CODE END LED_Task */
 }
 
 /* Private application code --------------------------------------------------*/
