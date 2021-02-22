@@ -30,8 +30,10 @@ class SuperPower:
     TEMPERATURE = 0xc5
     VERSION = 0xe0
     WRITE_TO_EEPROM = 0xe1
+    TEST = 0xf0
 
     _POLYNOME = 0x31
+    _TASK_MAX_DATA_SIZE = 32
 
     def __init__(self, bus_number, address, time_const, num_retries):
         self._bus_number = bus_number
@@ -157,6 +159,43 @@ class SuperPower:
         logging.warning("Couldn't read uptime information after " + str(x) + " retries.")
         return 0xFFFFFFFFFFFF
 
+    def send_to_task(self, register, values):
+        if len(values) > self._TASK_MAX_DATA_SIZE:
+            return False
+        crc = self.addCrc(0, register)
+        crc = self.calcCRC(register, values, len(values))
+
+        values.append(crc)
+        for x in range(self._num_retries):
+            bus = smbus.SMBus(self._bus_number)
+            time.sleep(self._time_const)
+            try:
+                bus.write_i2c_block_data(self._address, register, values)
+                bus.close()
+                return True
+            except Exception as e:
+                logging.debug("Couldn't send data to register " + hex(register) + ". Exception: " + str(e))
+        logging.warning("Couldn't send data to register after " + str(x) + " retries.")
+        return False
+
+    def receive_from_task(self, register, num_bytes):
+        if num_bytes > self._TASK_MAX_DATA_SIZE:
+            num_bytes = self._TASK_MAX_DATA_SIZE
+        for x in range(self._num_retries):
+            bus = smbus.SMBus(self._bus_number)
+            time.sleep(self._time_const)
+            try:
+                read = bus.read_i2c_block_data(self._address, register, num_bytes + 1)
+                bus.close()
+                if read[num_bytes] == self.calcCRC(register, read, num_bytes):
+                    read.pop()
+                    return read
+                logging.debug("Couldn't read data from register " + hex(register) + " correctly: " + hex(val))
+            except Exception as e:
+                logging.debug("Couldn't read data from register " + hex(register) + ". Exception: " + str(e))
+        logging.warning("Couldn't read 8 bit register after " + str(x) + " retries.")
+        return 0xFFFF
+
 
     def get_primed(self):
         return self.get_8bit_value(self.PRIMED)
@@ -223,3 +262,9 @@ class SuperPower:
 
     def get_temperature(self):
         return self.get_16bit_value(self.TEMPERATURE)
+
+    def task_send_to_test(self, values):
+        return self.send_to_task(self.TEST, values)
+
+    def task_receive_from_test(self, num_bytes):
+        return self.receive_from_task(self.TEST, num_bytes)
