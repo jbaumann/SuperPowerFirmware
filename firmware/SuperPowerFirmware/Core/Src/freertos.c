@@ -26,11 +26,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "queue_handles.h"
+#include <string.h>
 #include "adc.h"
 #include "i2c.h"
 #include "ch_bq25895.h"
 #include "rtc.h"
+#include "task_communication.h"
 
 // JB TODO move to external impl.
 #include "rtc.h"
@@ -90,6 +91,13 @@ const osThreadAttr_t LED_attributes = {
   .priority = (osPriority_t) osPriorityLow,
   .stack_size = 2048 * 4
 };
+/* Definitions for Test */
+osThreadId_t TestHandle;
+const osThreadAttr_t Test_attributes = {
+  .name = "Test",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 1024 * 4
+};
 /* Definitions for I2C_R_Queue */
 osMessageQueueId_t I2C_R_QueueHandle;
 const osMessageQueueAttr_t I2C_R_Queue_attributes = {
@@ -110,6 +118,11 @@ osMessageQueueId_t LED_R_QueueHandle;
 const osMessageQueueAttr_t LED_R_Queue_attributes = {
   .name = "LED_R_Queue"
 };
+/* Definitions for Test_R_Queue */
+osMessageQueueId_t Test_R_QueueHandle;
+const osMessageQueueAttr_t Test_R_Queue_attributes = {
+  .name = "Test_R_Queue"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -121,6 +134,7 @@ void RTC_Task(void *argument);
 void StateMachine_Task(void *argument);
 void VoltageMeasurement_Task(void *argument);
 void LED_Task(void *argument);
+void Test_Task(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -180,6 +194,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of LED_R_Queue */
   LED_R_QueueHandle = osMessageQueueNew (16, sizeof(LED_QueueMsg_t*), &LED_R_Queue_attributes);
 
+  /* creation of Test_R_Queue */
+  Test_R_QueueHandle = osMessageQueueNew (16, sizeof(Task_Data), &Test_R_Queue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -199,6 +216,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of LED */
   LEDHandle = osThreadNew(LED_Task, NULL, &LED_attributes);
+
+  /* creation of Test */
+  TestHandle = osThreadNew(Test_Task, NULL, &Test_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -361,7 +381,7 @@ void LED_Task(void *argument)
     	} else {
     		waiting_time = 0; // do not wait for message
     	}
-		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, waiting_time); // wait for message
+		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, waiting_time);
 		if (status == osOK) {
 			if(msg->iterations == 0) {
 				background = NULL;
@@ -408,9 +428,46 @@ void LED_Task(void *argument)
   /* USER CODE END LED_Task */
 }
 
+/* USER CODE BEGIN Header_Test_Task */
+/**
+* @brief Function implementing the Test thread.
+* @param argument: Not used
+* @retval None
+*/
+uint8_t test_task_data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+/* USER CODE END Header_Test_Task */
+void Test_Task(void *argument)
+{
+  /* USER CODE BEGIN Test_Task */
+	Task_Data msg;
+	osStatus_t status;
+  /* Infinite loop */
+  for(;;)
+  {
+		status = osMessageQueueGet(Test_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
+		if (status == osOK) {
+			// copy msg to test_task_data
+			uint8_t len = (msg.data_size > sizeof(test_task_data)) ? sizeof(test_task_data) : msg.data_size;
+			memcpy(test_task_data, msg.data, len);
+
+			// Here comes the business logic
+			for (uint8_t i = 0; i < len; i++) {
+				test_task_data[i] *= 2;
+			}
+		}
+
+  }
+  /* USER CODE END Test_Task */
+}
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
+uint8_t test_callback(uint8_t transfer[]) {
+	memcpy(transfer, test_task_data, sizeof(test_task_data));
+	return sizeof(test_task_data);
+}
 
 /* USER CODE END Application */
 

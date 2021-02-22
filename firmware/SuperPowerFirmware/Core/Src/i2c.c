@@ -27,10 +27,10 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "task_communication.h"
 #include "rtc.h"
 #include "crc_8bit.h"
 #include "cmsis_os.h"
-#include "queue_handles.h"
 #include "ch_bq25895.h"
 
 #include "DS3231.h"
@@ -214,7 +214,9 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
  *
  *  register_number the register value sent by the RPi
  */
-void i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t *tdata) {
+uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tdata[]) {
+	uint8_t len = 1; // 8bit by default
+
 	// identify the addressed struct and copy the value
 	if (register_number < (enum I2C_Register)STATUS_8BIT_OFFSET) {
 
@@ -233,6 +235,8 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t *tdata
 	} else if (register_number < (enum I2C_Register)STATUS_16BIT_OFFSET) {
 
 		// access to the CONFIG_16BIT struct
+		len = 2; // 16bit
+
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
 		if(reg < i2c_config_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) tdata;
@@ -241,22 +245,42 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t *tdata
 	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 
 		// access to the STATUS_16BIT struct
+		len = 2; // 16bit
+
 		uint8_t reg = register_number - STATUS_16BIT_OFFSET;
 		if(reg < i2c_status_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) tdata;
 			val[0] = i2c_status_register_16bit->reg[reg];
 		}
-	} else {
-		// access to the SPECIAL_16BIT struct
-
+	} else if (register_number < (enum I2C_Register) TASK_COMMUNICATION) {
+		/* access to the SPECIAL_16BIT struct */
 		osMessageQueuePut(LED_R_QueueHandle, &blink_SOS_3, 0, 0);
 
-		// Special register requesting the version number
-		if(register_number == i2creg_version) {
+		switch (register_number) {
+		case i2creg_version:
+			// Special register requesting the version number
+			len = 3;  // 3 byte
 			uint32_t *val = (uint32_t*) tdata;
 			val[0] = prog_version;
+			break;
+		case i2creg_write_to_eeprom:
+			len = 1;  // 1 byte
+			break;
+		default:
+			break;
+		}
+
+	} else {
+		/* access to the task communication */
+		uint8_t task_number = register_number - TASK_COMMUNICATION;
+		if (task_number < task_comm_array_size) {
+			uint8_t (*callback) (uint8_t *tdata) = task_communication[task_number].callback;
+			if (callback != NULL) {
+				len = callback(tdata);
+			}
 		}
 	}
+	return len + 1;  // add the space for the crc
 }
 
 /*
@@ -264,9 +288,12 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t *tdata
  * the bounds and if everything is ok, copy the value
  * from the buffer to the register
  *
- *  register_number the register value sent by the RPi
+ * register_number the register value sent by the RPi
+ * data the data sent by the RPi
+ * len the length of the data
+ *
  */
-void i2c_writeBufferToRegister(uint8_t register_number, uint8_t *data) {
+void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t len) {
 	uint8_t reg_has_changed = false;
 
 	// identify the addressed struct and copy the value
@@ -293,40 +320,30 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t *data) {
 	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 		/* the RPi does not set values in the STATUS_16BIT struct */
 
+	} else if (register_number < (enum I2C_Register)TASK_COMMUNICATION) {
+		/* access to the SPECIAL_16BIT struct */
+
 	} else {
-		// access to the SPECIAL_16BIT struct
+		/* access to the task communication */
+		uint8_t task_number = register_number - TASK_COMMUNICATION;
+		if (task_number < task_comm_array_size) {
+			// send data to Queue
+			osMessageQueueId_t *queue = task_communication[task_number].queue;
+			if (queue != NULL) {
+				/*
+				 * The data is already in ups_transaction.rdata, we map the rawdata
+				 * to the Task_Data structure and thus have to write the length
+				 * into the i2c_register. This trick saves us from copying the data
+				 */
+				ups_transaction.i2c_register = len;
+				osMessageQueuePut(*queue, &ups_transaction.rawdata, 0, 0);
+			}
+		}
 	}
 	if(reg_has_changed) {
 		backup_registers();
 	}
 }
-
-/*
- * Determine the correct transfer size depending on the current value
- * of the i2c_register
- */
-uint8_t i2c_calc_transfer_size( ) {
-	uint8_t len = 1 + 1; // 8bit by default + crc
-	if (ups_transaction.i2c_register >= (enum I2C_Register) SPECIAL_16BIT_OFFSET) {
-		switch (ups_transaction.i2c_register) {
-		case i2creg_version:
-			// 3 byte + crc
-			len = 3 + 1;
-			break;
-		case i2creg_write_to_eeprom:
-			// 1 byte + crc
-			len = 1 + 1;
-			break;
-		default:
-			break;
-		}
-	} else if (ups_transaction.i2c_register >= (enum I2C_Register) CONFIG_16BIT_OFFSET) {
-		// We have a 16bit register + crc
-		len = 2 + 1;
-	}
-	return len;
-}
-
 
 /*
  * We use the primary address for the UPS and the secondary address for
@@ -348,8 +365,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		case I2C_DIRECTION_RECEIVE:
 			// we copy the data to the buffer and send it to the RPi
 			i2c_register = hi2c->Instance->DR;
-			len = i2c_calc_transfer_size();
-			i2c_writeRegisterToBuffer(i2c_register, ups_transaction.tdata);
+			len = i2c_writeRegisterToBuffer(i2c_register, ups_transaction.tdata);
 			ups_transaction.tdata[len - 1] = calcCRC(i2c_register, ups_transaction.tdata, len - 1);
 			HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, ups_transaction.tdata, len, I2C_LAST_FRAME);
 			break;
@@ -365,7 +381,6 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, rtc_transaction.rawdata, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
 			break;
 		case I2C_DIRECTION_RECEIVE:
-			// TODO change this to an array of functions
 			sizeOfData = rtc_get_RTC_register(rtc_transaction.rdata[0], rtc_transaction.tdata);
 			HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, rtc_transaction.tdata, sizeOfData, I2C_LAST_FRAME);
 			break;
@@ -426,7 +441,7 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 			// check crc and copy value if crc is correct
 			uint8_t crc = calcCRC(ups_transaction.i2c_register, ups_transaction.rdata, data_len);
 			if(crc == ups_transaction.rdata[data_len]) {
-				i2c_writeBufferToRegister(ups_transaction.i2c_register, ups_transaction.rdata);
+				i2c_writeBufferToRegister(ups_transaction.i2c_register, ups_transaction.rdata, data_len);
 			}
 		}
 	} else {

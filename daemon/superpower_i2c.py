@@ -1,4 +1,6 @@
 
+# Author Joachim Baumann
+
 import logging
 import os
 import sys
@@ -26,8 +28,8 @@ class SuperPower:
     EXT_VOLTAGE = 0xc3
     SECONDS = 0xc4
     TEMPERATURE = 0xc5
-    VERSION = 0xf0
-    WRITE_TO_EEPROM = 0xf1
+    VERSION = 0xe0
+    WRITE_TO_EEPROM = 0xe1
 
     _POLYNOME = 0x31
 

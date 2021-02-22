@@ -14,13 +14,16 @@
  * holds all registers that contain status information read by the
  * Raspberry Pi.
  * We use different structures for the 8-bit and the 16-bit values,
- * thus all in all we have 4 register structures.
+ * an additional structure for special registers and a final range
+ * for the direct communication with tasks.
  * We use one byte as the register. We place the registers in the
  * following address range:
  * -  8-bit config 0x00-0x3F
  * -  8-bit status 0x40-0x7F
  * - 16-bit config 0x80-0xBF
- * - 16-bit status 0xC0-0xFF
+ * - 16-bit status 0xC0-0xDF
+ * - Special Regs. 0xE0-0xEF
+ * - Task Comm.    0xF0-0xFF
  */
 
 /*
@@ -34,12 +37,13 @@
  */
 
 enum i2c_consts {
-	I2C_BUFFER_SIZE = 34,                              // max data size including register and crc
-	CONFIG_8BIT_OFFSET = 0x00,                         // _EXTRACT_I2C_REGISTER_
-	STATUS_8BIT_OFFSET = 0x40,                         // _EXTRACT_I2C_REGISTER_
-	CONFIG_16BIT_OFFSET = 0x80,                        // _EXTRACT_I2C_REGISTER_
-	STATUS_16BIT_OFFSET = 0xC0,                        // _EXTRACT_I2C_REGISTER_
-	SPECIAL_16BIT_OFFSET = 0xF0,                       // _EXTRACT_I2C_REGISTER_
+	I2C_BUFFER_SIZE      =   34,                       // max data size including register and crc
+	CONFIG_8BIT_OFFSET   = 0x00,                       // _EXTRACT_I2C_REGISTER_
+	STATUS_8BIT_OFFSET   = 0x40,                       // _EXTRACT_I2C_REGISTER_
+	CONFIG_16BIT_OFFSET  = 0x80,                       // _EXTRACT_I2C_REGISTER_
+	STATUS_16BIT_OFFSET  = 0xC0,                       // _EXTRACT_I2C_REGISTER_
+	SPECIAL_16BIT_OFFSET = 0xE0,                       // _EXTRACT_I2C_REGISTER_
+	TASK_COMMUNICATION   = 0xF0,                       // _EXTRACT_I2C_REGISTER_
 };
 
 typedef union {

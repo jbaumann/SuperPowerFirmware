@@ -7,7 +7,7 @@
 
 #include "main.h"
 #include "cmsis_os.h"
-#include "queue_handles.h"
+#include "task_communication.h"
 
 #define NUM_STEPS(steps) (sizeof(steps)/sizeof(LED_Step))
 

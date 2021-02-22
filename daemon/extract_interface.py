@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+#
+# Author: Joachim Baumann
 
 import os
 import sys
@@ -109,6 +111,8 @@ def parse_cmdline(args: Tuple[Any]) -> Namespace:
 
 
 class_preamble = """
+# Author Joachim Baumann
+
 import logging
 import os
 import sys
