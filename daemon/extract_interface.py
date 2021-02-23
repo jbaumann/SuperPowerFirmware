@@ -48,6 +48,8 @@ def main(*args):
                 "TASK_COMMUNICATION\s*=\s*([0-9a-fA-FxX]+)", line)
             if match:
                 task_communication_offset = int(match.group(1), 0)
+                # add temporary marker to recognize register collisions
+                i2c_register[task_communication_offset] = "for Task Communication"
             # Now check for offset definition
             match = re.search(
                 "(CONFIG|STATUS|SPECIAL)_(8|16)BIT_OFFSET\s*=\s*([0-9a-fA-FxX]+)", line)
@@ -87,6 +89,9 @@ def main(*args):
                             "getter": getter, "setter": type == "config", "size": size}
                         reg_number += 1
                     next_line = next(lines_iter)
+
+    # Remove temporary marker
+    i2c_register.pop(task_communication_offset, None)
 
     # parse input file for task communication
     lines_iter = iter(task_communication_lines)
