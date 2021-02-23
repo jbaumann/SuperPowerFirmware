@@ -63,6 +63,7 @@ def main(*args):
                 identifier = match.group(1)
                 match = re.search(
                     "(Status|Config|Special).*(8|16).*", identifier)
+                const_name = match.group(0)
                 type = match.group(1).lower()
                 size = match.group(2)
 
@@ -73,6 +74,13 @@ def main(*args):
                     match = re.search("\s+([^ \d\W]\w+)\s*;", next_line)
                     if match:
                         reg_name = match.group(1)
+                        if reg_number in i2c_register:
+                            print(
+                                "WARNING: Register collision for register %#2.2x" % reg_number)
+                            print("         Register %s and %s" %
+                                  (i2c_register[reg_number], reg_name))
+                            print(
+                                "         Fix: Adjust you settings for %s" % (const_name))
                         i2c_register[reg_number] = reg_name
                         getter = type == "config" or type == "status"
                         function_details[reg_number] = {
@@ -115,6 +123,11 @@ def main(*args):
     task_counter = task_communication_offset
     for task in tasks:
         if task != "null":
+            if task_counter > 0xFF:
+                print("WARNING: You will not be able to use task %s" % task)
+                print("         Register %#2.2x will not be reachable" %
+                      task_counter)
+                print("         Fix: Adjust your settings for TASK_COMMUNICATION")
             print("    %s = %#2.2x" %
                   (task.upper(), task_counter), file=file)
             task_counter = task_counter + 1
@@ -211,8 +224,10 @@ class_functions = """
                 if (self.get_8bit_value(register)) == value:
                     return True
             except Exception as e:
-                logging.debug("Couldn't set 8 bit register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't set 8 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't set 8 bit register " + \
+                              hex(register) + ". Exception: " + str(e))
+        logging.warning("Couldn't set 8 bit register after " + \
+                        str(x) + " retries.")
         return False
 
     def get_8bit_value(self, register):
@@ -225,10 +240,13 @@ class_functions = """
                 bus.close()
                 if read[1] == self.calcCRC(register, read, 1):
                     return val
-                logging.debug("Couldn't read register " + hex(register) + " correctly: " + hex(val))
+                logging.debug("Couldn't read register " + \
+                              hex(register) + " correctly: " + hex(val))
             except Exception as e:
-                logging.debug("Couldn't read 8 bit register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't read 8 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't read 8 bit register " + \
+                              hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't read 8 bit register after " + str(x) + " retries.")
         return 0xFFFF
 
     def set_16bit_value(self, register, value):
@@ -247,8 +265,10 @@ class_functions = """
                 if (self.get_16bit_value(register)) == value:
                     return True
             except Exception as e:
-                logging.debug("Couldn't set 16 bit register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't set 16 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't set 16 bit register " + \
+                              hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't set 16 bit register after " + str(x) + " retries.")
         return False
 
     def get_16bit_value(self, register):
@@ -258,14 +278,18 @@ class_functions = """
             try:
                 read = bus.read_i2c_block_data(self._address, register, 3)
                 # we interpret every value as a 16-bit signed value
-                val = int.from_bytes(read[0:2], byteorder='little', signed=True)
+                val = int.from_bytes(
+                    read[0:2], byteorder='little', signed=True)
                 bus.close()
                 if read[2] == self.calcCRC(register, read, 2):
                     return val
-                logging.debug("Couldn't read 16 bit register " + hex(register) + " correctly.")
+                logging.debug("Couldn't read 16 bit register " + \
+                              hex(register) + " correctly.")
             except Exception as e:
-                logging.debug("Couldn't read 16 bit register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't read 16 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't read 16 bit register " + \
+                              hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't read 16 bit register after " + str(x) + " retries.")
         return 0xFFFFFFFF
 
     def get_version(self):
@@ -282,8 +306,10 @@ class_functions = """
                     return (major, minor, patch)
                 logging.debug("Couldn't read version information correctly.")
             except Exception as e:
-                logging.debug("Couldn't read version information. Exception: " + str(e))
-        logging.warning("Couldn't read version information after " + str(x) + " retries.")
+                logging.debug(
+                    "Couldn't read version information. Exception: " + str(e))
+        logging.warning(
+            "Couldn't read version information after " + str(x) + " retries.")
         return (0xFFFF, 0xFFFF, 0xFFFF)
 
     def get_uptime(self):
@@ -291,15 +317,19 @@ class_functions = """
             bus = smbus.SMBus(self._bus_number)
             time.sleep(self._time_const)
             try:
-                read = bus.read_i2c_block_data(self._address, self.REG_UPTIME, 5)
+                read = bus.read_i2c_block_data(
+                    self._address, self.REG_UPTIME, 5)
                 bus.close()
                 if read[4] == self.calcCRC(self.REG_UPTIME, read, 4):
-                    uptime = int.from_bytes(read[0:3], byteorder='little', signed=False)
+                    uptime = int.from_bytes(
+                        read[0:3], byteorder='little', signed=False)
                     return uptime
                 logging.debug("Couldn't read uptime information correctly.")
             except Exception as e:
-                logging.debug("Couldn't read uptime information. Exception: " + str(e))
-        logging.warning("Couldn't read uptime information after " + str(x) + " retries.")
+                logging.debug(
+                    "Couldn't read uptime information. Exception: " + str(e))
+        logging.warning(
+            "Couldn't read uptime information after " + str(x) + " retries.")
         return 0xFFFFFFFFFFFF
 
     def send_to_task(self, register, values):
@@ -317,8 +347,10 @@ class_functions = """
                 bus.close()
                 return True
             except Exception as e:
-                logging.debug("Couldn't send data to register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't send data to register after " + str(x) + " retries.")
+                logging.debug("Couldn't send data to register " + \
+                              hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't send data to register after " + str(x) + " retries.")
         return False
 
     def receive_from_task(self, register, num_bytes):
@@ -328,15 +360,19 @@ class_functions = """
             bus = smbus.SMBus(self._bus_number)
             time.sleep(self._time_const)
             try:
-                read = bus.read_i2c_block_data(self._address, register, num_bytes + 1)
+                read = bus.read_i2c_block_data(
+                    self._address, register, num_bytes + 1)
                 bus.close()
                 if read[num_bytes] == self.calcCRC(register, read, num_bytes):
                     read.pop()
                     return read
-                logging.debug("Couldn't read data from register " + hex(register) + " correctly: " + hex(val))
+                logging.debug("Couldn't read data from register " + \
+                              hex(register) + " correctly: " + hex(val))
             except Exception as e:
-                logging.debug("Couldn't read data from register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't read 8 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't read data from register " + \
+                              hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't read 8 bit register after " + str(x) + " retries.")
         return 0xFFFF
 """
 

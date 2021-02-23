@@ -68,8 +68,8 @@ class SuperPower:
                 if (self.get_8bit_value(register)) == value:
                     return True
             except Exception as e:
-                logging.debug("Couldn't set 8 bit register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't set 8 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't set 8 bit register " +                               hex(register) + ". Exception: " + str(e))
+        logging.warning("Couldn't set 8 bit register after " +                         str(x) + " retries.")
         return False
 
     def get_8bit_value(self, register):
@@ -82,10 +82,11 @@ class SuperPower:
                 bus.close()
                 if read[1] == self.calcCRC(register, read, 1):
                     return val
-                logging.debug("Couldn't read register " + hex(register) + " correctly: " + hex(val))
+                logging.debug("Couldn't read register " +                               hex(register) + " correctly: " + hex(val))
             except Exception as e:
-                logging.debug("Couldn't read 8 bit register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't read 8 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't read 8 bit register " +                               hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't read 8 bit register after " + str(x) + " retries.")
         return 0xFFFF
 
     def set_16bit_value(self, register, value):
@@ -104,8 +105,9 @@ class SuperPower:
                 if (self.get_16bit_value(register)) == value:
                     return True
             except Exception as e:
-                logging.debug("Couldn't set 16 bit register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't set 16 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't set 16 bit register " +                               hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't set 16 bit register after " + str(x) + " retries.")
         return False
 
     def get_16bit_value(self, register):
@@ -115,14 +117,16 @@ class SuperPower:
             try:
                 read = bus.read_i2c_block_data(self._address, register, 3)
                 # we interpret every value as a 16-bit signed value
-                val = int.from_bytes(read[0:2], byteorder='little', signed=True)
+                val = int.from_bytes(
+                    read[0:2], byteorder='little', signed=True)
                 bus.close()
                 if read[2] == self.calcCRC(register, read, 2):
                     return val
-                logging.debug("Couldn't read 16 bit register " + hex(register) + " correctly.")
+                logging.debug("Couldn't read 16 bit register " +                               hex(register) + " correctly.")
             except Exception as e:
-                logging.debug("Couldn't read 16 bit register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't read 16 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't read 16 bit register " +                               hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't read 16 bit register after " + str(x) + " retries.")
         return 0xFFFFFFFF
 
     def get_version(self):
@@ -139,8 +143,10 @@ class SuperPower:
                     return (major, minor, patch)
                 logging.debug("Couldn't read version information correctly.")
             except Exception as e:
-                logging.debug("Couldn't read version information. Exception: " + str(e))
-        logging.warning("Couldn't read version information after " + str(x) + " retries.")
+                logging.debug(
+                    "Couldn't read version information. Exception: " + str(e))
+        logging.warning(
+            "Couldn't read version information after " + str(x) + " retries.")
         return (0xFFFF, 0xFFFF, 0xFFFF)
 
     def get_uptime(self):
@@ -148,15 +154,19 @@ class SuperPower:
             bus = smbus.SMBus(self._bus_number)
             time.sleep(self._time_const)
             try:
-                read = bus.read_i2c_block_data(self._address, self.REG_UPTIME, 5)
+                read = bus.read_i2c_block_data(
+                    self._address, self.REG_UPTIME, 5)
                 bus.close()
                 if read[4] == self.calcCRC(self.REG_UPTIME, read, 4):
-                    uptime = int.from_bytes(read[0:3], byteorder='little', signed=False)
+                    uptime = int.from_bytes(
+                        read[0:3], byteorder='little', signed=False)
                     return uptime
                 logging.debug("Couldn't read uptime information correctly.")
             except Exception as e:
-                logging.debug("Couldn't read uptime information. Exception: " + str(e))
-        logging.warning("Couldn't read uptime information after " + str(x) + " retries.")
+                logging.debug(
+                    "Couldn't read uptime information. Exception: " + str(e))
+        logging.warning(
+            "Couldn't read uptime information after " + str(x) + " retries.")
         return 0xFFFFFFFFFFFF
 
     def send_to_task(self, register, values):
@@ -174,8 +184,9 @@ class SuperPower:
                 bus.close()
                 return True
             except Exception as e:
-                logging.debug("Couldn't send data to register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't send data to register after " + str(x) + " retries.")
+                logging.debug("Couldn't send data to register " +                               hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't send data to register after " + str(x) + " retries.")
         return False
 
     def receive_from_task(self, register, num_bytes):
@@ -185,15 +196,17 @@ class SuperPower:
             bus = smbus.SMBus(self._bus_number)
             time.sleep(self._time_const)
             try:
-                read = bus.read_i2c_block_data(self._address, register, num_bytes + 1)
+                read = bus.read_i2c_block_data(
+                    self._address, register, num_bytes + 1)
                 bus.close()
                 if read[num_bytes] == self.calcCRC(register, read, num_bytes):
                     read.pop()
                     return read
-                logging.debug("Couldn't read data from register " + hex(register) + " correctly: " + hex(val))
+                logging.debug("Couldn't read data from register " +                               hex(register) + " correctly: " + hex(val))
             except Exception as e:
-                logging.debug("Couldn't read data from register " + hex(register) + ". Exception: " + str(e))
-        logging.warning("Couldn't read 8 bit register after " + str(x) + " retries.")
+                logging.debug("Couldn't read data from register " +                               hex(register) + ". Exception: " + str(e))
+        logging.warning(
+            "Couldn't read 8 bit register after " + str(x) + " retries.")
         return 0xFFFF
 
 
