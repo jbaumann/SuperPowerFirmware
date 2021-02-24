@@ -34,8 +34,10 @@
 #include "ch_bq25895.h"
 
 #include "DS3231.h"
+#include "queue.h"
 
-
+#include "i2c_register.h"
+uint8_t buffer[I2C_BUFFER_SIZE];
 /*
  * Communication data for I2C
  */
@@ -55,17 +57,7 @@ _Bool i2c_primary_address = true;
  *
  * The variable data_size contains the size of the data without register and crc
  */
-typedef struct {
-	uint8_t data_size;
-	union {
-		uint8_t rawdata[I2C_BUFFER_SIZE];
-		uint8_t tdata[I2C_BUFFER_SIZE];
-		struct {
-			enum I2C_Register i2c_register;
-			uint8_t rdata[I2C_BUFFER_SIZE - 1];
-		};
-	};
-} I2C_Transaction;
+
 
 I2C_Transaction rtc_transaction, ups_transaction;
 
@@ -377,8 +369,9 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		uint8_t sizeOfData;
 		switch(TransferDirection){
 		case I2C_DIRECTION_TRANSMIT:
-			//HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, slaveReceiveBuffer, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
-			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, rtc_transaction.rawdata, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
+
+			memset(buffer, 0, I2C_BUFFER_SIZE);
+			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, buffer, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
 			break;
 		case I2C_DIRECTION_RECEIVE:
 			sizeOfData = rtc_get_RTC_register(rtc_transaction.rdata[0], rtc_transaction.tdata);
@@ -445,9 +438,15 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 			}
 		}
 	} else {
-		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 2 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
+		rtc_transaction.data_size = (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
 		if(rtc_transaction.data_size > 0 && rtc_transaction.data_size < I2C_BUFFER_SIZE) {
-			osMessageQueuePut(RTC_R_QueueHandle, &rtc_transaction, 0, 0);
+			memcpy(rtc_transaction.rawdata, buffer, rtc_transaction.data_size);
+			BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+			xQueueSendFromISR(RTC_R_QueueHandle, &rtc_transaction, &xHigherPriorityTaskWoken);
+			if(xHigherPriorityTaskWoken){
+				portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+			}
+			//osMessageQueuePut(RTC_R_QueueHandle, &rtc_transaction, 0, 0);
 		}
 	}
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart

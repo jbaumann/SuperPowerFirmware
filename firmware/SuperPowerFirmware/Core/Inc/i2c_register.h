@@ -180,5 +180,17 @@ enum I2C_Register {
 
 }__attribute__ ((__packed__));            // force smallest size i.e., uint_8t (GCC syntax)
 
+//temporary location of the struct
+typedef struct {
+	uint8_t data_size;
+	union {
+		uint8_t rawdata[I2C_BUFFER_SIZE];
+		uint8_t tdata[I2C_BUFFER_SIZE];
+		struct {
+			enum I2C_Register i2c_register;
+			uint8_t rdata[I2C_BUFFER_SIZE - 1];
+		};
+	};
+} I2C_Transaction;
 
 #endif /* INC_I2C_REGISTER_H_ */

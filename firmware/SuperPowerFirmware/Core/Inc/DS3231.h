@@ -60,6 +60,6 @@ typedef struct {
 
 }ds3231;
 
-uint8_t ds3231_cmd_decode();
+uint8_t ds3231_cmd_decode(uint8_t cmd_size, uint8_t data[]);
 
 #endif /* DS3231_H_ */

@@ -134,68 +134,72 @@ uint8_t rtc_get_RTC_register(uint8_t reg, uint8_t tdata[]){
 }
 
 
-void rtc_msg_decode(uint8_t cmd_size, uint8_t data[]){
 
-	// TODO Refactor
-
-	uint8_t aux = cmd_size;
+uint8_t ds3231_cmd_decode(uint8_t cmd_size, uint8_t data[]){
+	RTC_TimeTypeDef time;
+	RTC_DateTypeDef date;
 	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
 	HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
-	switch(data[0]){
+	uint8_t size = cmd_size;
+	uint8_t i = 1;
+	switch (data[0]) {
 	case 0:
-		if(aux-- > 0){
-			time.Seconds = data[0];
-			__attribute__ ((fallthrough));
+		if(size-- > 0){
+			time.SecondFraction = 0;
+			time.Seconds = data[i];
+			i++;
 		}else{
 			break;
 		}
 	case 1:
-		if(aux-- > 0){
-			time.Minutes = data[1];
-			__attribute__ ((fallthrough));
+		if(size-- > 0){
+			time.Minutes = data[i];
+			i++;
 		}else{
 			break;
 		}
 	case 2:
-		if(aux-- > 0){
-			time.Hours = data[2];
-			__attribute__ ((fallthrough));
+		if(size-- > 0){
+			time.Hours = data[i];
+			i++;
 		}else{
 			break;
 		}
 	case 3:
-		if(aux-- > 0){
-			date.WeekDay = data[3];
-			__attribute__ ((fallthrough));
+		if(size-- > 0){
+			date.WeekDay = data[i];
+			i++;
 		}else{
 			break;
 		}
 	case 4:
-		if(aux-- > 0){
-			date.Date = data[4];
-			__attribute__ ((fallthrough));
+		if(size-- > 0){
+			date.Date= data[i];
+			i++;
 		}else{
 			break;
 		}
 	case 5:
-		if(aux-- > 0){
-			date.Month = data[5];
-			__attribute__ ((fallthrough));
+		if(size-- > 0){
+			date.Month= data[i];
+			i++;
 		}else{
 			break;
 		}
 	case 6:
-		if(aux-- > 0){
-			date.Year = data[6];
-			__attribute__ ((fallthrough));
+		if(size-- > 0){
+			date.Year= data[i];
+			i++;
 		}else{
 			break;
 		}
 	default:
-		break;
+		if(size < 0)
+			return HAL_ERROR;
 	}
 	HAL_RTC_SetTime(&hrtc, &time, RTC_FORMAT_BCD);
 	HAL_RTC_SetDate(&hrtc, &date, RTC_FORMAT_BCD);
+	return HAL_OK;
 }
 
 

@@ -35,6 +35,7 @@
 
 // JB TODO move to external impl.
 #include "rtc.h"
+#include "i2c_register.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -267,10 +268,16 @@ void RTC_Task(void *argument)
 {
   /* USER CODE BEGIN RTC_Task */
   /* Infinite loop */
+  I2C_Transaction cmd;
+  memset(cmd.rawdata, 0, I2C_BUFFER_SIZE);
   for(;;)
   {
-	  //uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
-    osDelay(1);
+	  if(pdPASS == xQueueReceive(RTC_R_QueueHandle, &cmd, 100)){
+	  		 //cmd recevived by the task
+		  ds3231_cmd_decode(cmd.data_size, cmd.rawdata);
+		  //ds3231_cmd_decode(cmd);
+
+	  	 }
   }
   /* USER CODE END RTC_Task */
 }

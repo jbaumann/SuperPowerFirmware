@@ -9,6 +9,7 @@
 #include "i2c_register.h"
 
 
+
 I2C_Config_Register_8Bit  *i2c_config_register_8bit = &(config_registers.val.i2c_config_register_8bit);
 I2C_Config_Register_16Bit *i2c_config_register_16bit = &(config_registers.val.i2c_config_register_16bit);
 I2C_Status_Register_8Bit  _status_register_8bit, *i2c_status_register_8bit = &_status_register_8bit;
