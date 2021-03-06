@@ -26,13 +26,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "queue_handles.h"
+#include <string.h>
 #include "adc.h"
 #include "i2c.h"
 #include "ch_bq25895.h"
 #include "rtc.h"
-#include "queue.h"
-#include <stdbool.h>
+#include "task_communication.h"
 
 // JB TODO move to external impl.
 #include "rtc.h"
@@ -62,28 +61,42 @@ osThreadId_t I2CHandle;
 const osThreadAttr_t I2C_attributes = {
   .name = "I2C",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for RTC */
 osThreadId_t RTCHandle;
 const osThreadAttr_t RTC_attributes = {
   .name = "RTC",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for StateMachine */
 osThreadId_t StateMachineHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for VoltageMeasurem */
 osThreadId_t VoltageMeasuremHandle;
 const osThreadAttr_t VoltageMeasurem_attributes = {
   .name = "VoltageMeasurem",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 4096 * 4
+  .stack_size = 2048 * 4
+};
+/* Definitions for LED */
+osThreadId_t LEDHandle;
+const osThreadAttr_t LED_attributes = {
+  .name = "LED",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 2048 * 4
+};
+/* Definitions for Test */
+osThreadId_t TestHandle;
+const osThreadAttr_t Test_attributes = {
+  .name = "Test",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 1024 * 4
 };
 /* Definitions for I2C_R_Queue */
 osMessageQueueId_t I2C_R_QueueHandle;
@@ -100,6 +113,16 @@ osMessageQueueId_t Statemachine_R_QueueHandle;
 const osMessageQueueAttr_t Statemachine_R_Queue_attributes = {
   .name = "Statemachine_R_Queue"
 };
+/* Definitions for LED_R_Queue */
+osMessageQueueId_t LED_R_QueueHandle;
+const osMessageQueueAttr_t LED_R_Queue_attributes = {
+  .name = "LED_R_Queue"
+};
+/* Definitions for Test_R_Queue */
+osMessageQueueId_t Test_R_QueueHandle;
+const osMessageQueueAttr_t Test_R_Queue_attributes = {
+  .name = "Test_R_Queue"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -110,6 +133,8 @@ void I2C_Task(void *argument);
 void RTC_Task(void *argument);
 void StateMachine_Task(void *argument);
 void VoltageMeasurement_Task(void *argument);
+void LED_Task(void *argument);
+void Test_Task(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -166,6 +191,12 @@ void MX_FREERTOS_Init(void) {
   /* creation of Statemachine_R_Queue */
   Statemachine_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &Statemachine_R_Queue_attributes);
 
+  /* creation of LED_R_Queue */
+  LED_R_QueueHandle = osMessageQueueNew (16, sizeof(LED_QueueMsg_t*), &LED_R_Queue_attributes);
+
+  /* creation of Test_R_Queue */
+  Test_R_QueueHandle = osMessageQueueNew (16, sizeof(Task_Data), &Test_R_Queue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -182,6 +213,12 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of VoltageMeasurem */
   VoltageMeasuremHandle = osThreadNew(VoltageMeasurement_Task, NULL, &VoltageMeasurem_attributes);
+
+  /* creation of LED */
+  LEDHandle = osThreadNew(LED_Task, NULL, &LED_attributes);
+
+  /* creation of Test */
+  TestHandle = osThreadNew(Test_Task, NULL, &Test_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -215,11 +252,10 @@ void I2C_Task(void *argument)
 	/* Infinite loop */
 	xQueueReceive(I2C_R_QueueHandle, &cmd, 100);
 	for (;;) {
-		if(pdTRUE == xQueueReceive(I2C_R_QueueHandle, &cmd, 100)){
-			qs = uxQueueMessagesWaiting(I2C_R_QueueHandle);
-			memcpy(buffer, cmd.data,cmd.cmd_size);
-			size = cmd.cmd_size;
-			//HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, buffer, size, I2C_LAST_FRAME);
+		status = osMessageQueueGet(I2C_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
+		if (status == osOK) {
+			debug_print("I2C_Task receive, ");
+			//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		}
 		//status = osMessageQueueGet(I2C_R_QueueHandle, &cmd, NULL, osWaitForever); // wait for message
 		//if (status == osOK) {
@@ -227,6 +263,7 @@ void I2C_Task(void *argument)
 		//	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		//}
 	}
+	// osDelay(1);
   /* USER CODE END I2C_Task */
 }
 
@@ -325,15 +362,125 @@ void VoltageMeasurement_Task(void *argument)
 				// it to come online.
 			}
 		}
+		if(ret_val != HAL_OK) {
+			HAL_I2C_EnableListen_IT(&hi2c1);
+		}
+
 		osDelay(ch_update_interval);
 
 	}
   /* USER CODE END VoltageMeasurement_Task */
 }
 
+/* USER CODE BEGIN Header_LED_Task */
+/**
+* @brief Function implementing the LED thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_LED_Task */
+void LED_Task(void *argument)
+{
+  /* USER CODE BEGIN LED_Task */
+	LED_QueueMsg_t *msg;
+	LED_QueueMsg_t *current = NULL, *background = blink_second_background;
+	osStatus_t status;
+	uint32_t waiting_time = 0;
+
+    for(;;)
+    {
+	if(background == NULL) {
+		waiting_time = osWaitForever; // wait for message
+	} else {
+		waiting_time = 0; // do not wait for message
+	}
+		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, waiting_time);
+		if (status == osOK) {
+			if(msg->iterations == 0) {
+				background = NULL;
+				current = NULL;
+			} else if(msg->iterations == 255) {
+				background = msg;
+				current = background;
+			} else {
+				current = msg;
+			}
+		} else {
+			current = background;
+		}
+
+		if(current != NULL) {
+			uint8_t iterations = current->iterations;
+			if(iterations == 0xFF) iterations = 1;
+
+			for(uint8_t i = 0; i < iterations; i++) {
+				for(uint8_t s = 0; s < current->number_steps; s++) {
+					LED_Step step = ((LED_Step *)(current->steps))[s];
+					uint8_t repeat = step.repeat;
+					if(repeat == 0) repeat = 1;
+
+					for(uint8_t r = 0; r < repeat; r++) {
+						if(step.ontime != 0)
+						{
+							HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+							osDelay(step.ontime);
+						}
+						if(step.offtime != 0) {
+							HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+							osDelay(step.offtime);
+						}
+					}
+				}
+			}
+			if(current->final_delay != 0) {
+				osDelay(current->final_delay);
+			}
+		}
+		current = NULL;
+    }
+  /* USER CODE END LED_Task */
+}
+
+/* USER CODE BEGIN Header_Test_Task */
+/**
+* @brief Function implementing the Test thread.
+* @param argument: Not used
+* @retval None
+*/
+uint8_t test_task_data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+/* USER CODE END Header_Test_Task */
+void Test_Task(void *argument)
+{
+  /* USER CODE BEGIN Test_Task */
+	Task_Data msg;
+	osStatus_t status;
+  /* Infinite loop */
+  for(;;)
+  {
+		status = osMessageQueueGet(Test_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
+		if (status == osOK) {
+			// copy msg to test_task_data
+			uint8_t len = (msg.data_size > sizeof(test_task_data)) ? sizeof(test_task_data) : msg.data_size;
+			memcpy(test_task_data, msg.data, len);
+
+			// Here comes the business logic
+			for (uint8_t i = 0; i < len; i++) {
+				test_task_data[i] *= 2;
+			}
+		}
+
+  }
+  /* USER CODE END Test_Task */
+}
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
+uint8_t test_callback(uint8_t transfer[]) {
+	memcpy(transfer, test_task_data, sizeof(test_task_data));
+	return sizeof(test_task_data);
+}
 
 /* USER CODE END Application */
 

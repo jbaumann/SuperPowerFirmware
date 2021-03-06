@@ -27,25 +27,48 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "task_communication.h"
 #include "rtc.h"
 #include "crc_8bit.h"
 #include "cmsis_os.h"
-#include "queue_handles.h"
 #include "ch_bq25895.h"
 
 #include "DS3231.h"
-#include "queue.h"
-
-
 
 
 /*
  * Communication data for I2C
  */
-uint8_t i2c1_buffer[I2C_BUFFER_SIZE + 1]; // worst case size including the crc
 _Bool i2c_primary_address = true;
-enum I2C_Register i2c_register;
-_Bool i2c_in_progress = false;
+
+/*
+ * The following structure holds the information needed for a transfer.
+ * The data array is the I2C buffer for the respective address.
+ * It contains the following data:
+ * - On Transmit
+ *   - Data to be sent
+ *   - CRC
+ * - On Receive
+ *   - Register
+ *   - Data received
+ *   - CRC
+ *
+ * The variable data_size contains the size of the data without register and crc
+ */
+typedef struct {
+	uint8_t data_size;
+	union {
+		uint8_t rawdata[I2C_BUFFER_SIZE];
+		uint8_t tdata[I2C_BUFFER_SIZE];
+		struct {
+			enum I2C_Register i2c_register;
+			uint8_t rdata[I2C_BUFFER_SIZE - 1];
+		};
+	};
+} I2C_Transaction;
+
+I2C_Transaction rtc_transaction, ups_transaction;
+
 
 
 //data for the RTC implementation
@@ -119,7 +142,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
     hdma_i2c1_rx.Init.MemInc = DMA_MINC_ENABLE;
     hdma_i2c1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_i2c1_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_i2c1_rx.Init.Mode = DMA_NORMAL;
+    hdma_i2c1_rx.Init.Mode = DMA_CIRCULAR;
     hdma_i2c1_rx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
     hdma_i2c1_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
     if (HAL_DMA_Init(&hdma_i2c1_rx) != HAL_OK)
@@ -199,47 +222,73 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
  *
  *  register_number the register value sent by the RPi
  */
-void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
+uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tdata[]) {
+	uint8_t len = 1; // 8bit by default
+
 	// identify the addressed struct and copy the value
 	if (register_number < (enum I2C_Register)STATUS_8BIT_OFFSET) {
 
 		// access to the CONFIG_8BIT struct
 		uint8_t reg = register_number - CONFIG_8BIT_OFFSET;
 		if(reg < i2c_config_reg_8bit_size) {
-			i2c1_buffer[0] = i2c_config_register_8bit->reg[reg];
+			tdata[0] = i2c_config_register_8bit->reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)CONFIG_16BIT_OFFSET) {
 
 		// access to the STATUS_8BIT struct
 		uint8_t reg = register_number - STATUS_8BIT_OFFSET;
 		if(reg < i2c_status_reg_8bit_size) {
-			i2c1_buffer[0] = i2c_status_register_8bit->reg[reg];
+			tdata[0] = i2c_status_register_8bit->reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)STATUS_16BIT_OFFSET) {
 
 		// access to the CONFIG_16BIT struct
+		len = 2; // 16bit
+
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
 		if(reg < i2c_config_reg_16bit_size) {
-			uint16_t *val = (uint16_t*) i2c1_buffer;
+			uint16_t *val = (uint16_t*) tdata;
 			val[0] = i2c_config_register_16bit->reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 
 		// access to the STATUS_16BIT struct
+		len = 2; // 16bit
+
 		uint8_t reg = register_number - STATUS_16BIT_OFFSET;
 		if(reg < i2c_status_reg_16bit_size) {
-			uint16_t *val = (uint16_t*) i2c1_buffer;
+			uint16_t *val = (uint16_t*) tdata;
 			val[0] = i2c_status_register_16bit->reg[reg];
 		}
-	} else {
-		// access to the SPECIAL_16BIT struct
+	} else if (register_number < (enum I2C_Register) TASK_COMMUNICATION) {
+		/* access to the SPECIAL_16BIT struct */
+		osMessageQueuePut(LED_R_QueueHandle, &blink_SOS_3, 0, 0);
 
-		// Special register requesting the version number
-		if(register_number == i2creg_version) {
-			uint32_t *val = (uint32_t*) i2c1_buffer;
+		switch (register_number) {
+		case i2creg_version:
+			// Special register requesting the version number
+			len = 3;  // 3 byte
+			uint32_t *val = (uint32_t*) tdata;
 			val[0] = prog_version;
+			break;
+		case i2creg_write_to_eeprom:
+			len = 1;  // 1 byte
+			break;
+		default:
+			break;
+		}
+
+	} else {
+		/* access to the task communication */
+		uint8_t task_number = register_number - TASK_COMMUNICATION;
+		if (task_number < task_comm_array_size) {
+			uint8_t (*callback) (uint8_t *tdata) = task_communication[task_number].callback;
+			if (callback != NULL) {
+				len = callback(tdata);
+			}
 		}
 	}
+	return len + 1;  // add the space for the crc
 }
 
 /*
@@ -247,9 +296,12 @@ void i2c_writeRegisterToBuffer(enum I2C_Register register_number) {
  * the bounds and if everything is ok, copy the value
  * from the buffer to the register
  *
- *  register_number the register value sent by the RPi
+ * register_number the register value sent by the RPi
+ * data the data sent by the RPi
+ * len the length of the data
+ *
  */
-void i2c_writeBufferToRegister(uint8_t register_number) {
+void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t len) {
 	uint8_t reg_has_changed = false;
 
 	// identify the addressed struct and copy the value
@@ -258,7 +310,7 @@ void i2c_writeBufferToRegister(uint8_t register_number) {
 		// access to the CONFIG_8BIT struct
 		uint8_t reg = register_number - CONFIG_8BIT_OFFSET;
 		if(reg < i2c_config_reg_8bit_size) {
-			i2c_config_register_8bit->reg[reg] = i2c1_buffer[0];
+			i2c_config_register_8bit->reg[reg] = data[0];
 			reg_has_changed = true;
 		}
 	} else if (register_number < CONFIG_16BIT_OFFSET) {
@@ -268,52 +320,37 @@ void i2c_writeBufferToRegister(uint8_t register_number) {
 		// access to the CONFIG_16BIT struct
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
 		if(reg < i2c_config_reg_16bit_size) {
-			uint16_t *val = (uint16_t*) (i2c1_buffer);
+			uint16_t *val = (uint16_t*) (data);
 			i2c_config_register_16bit->reg[reg] = val[0];
-
-			I2C_QueueMsg_t msg;
-			msg.id = register_number;
-			msg.big_val = val[0];
-
-			//osMessageQueuePut(I2C_R_QueueHandle, &msg, 0, 0);
 
 			reg_has_changed = true;
 		}
 	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 		/* the RPi does not set values in the STATUS_16BIT struct */
 
+	} else if (register_number < (enum I2C_Register)TASK_COMMUNICATION) {
+		/* access to the SPECIAL_16BIT struct */
+
 	} else {
-		// access to the SPECIAL_16BIT struct
+		/* access to the task communication */
+		uint8_t task_number = register_number - TASK_COMMUNICATION;
+		if (task_number < task_comm_array_size) {
+			// send data to Queue
+			osMessageQueueId_t *queue = task_communication[task_number].queue;
+			if (queue != NULL) {
+				/*
+				 * The data is already in ups_transaction.rdata, we map the rawdata
+				 * to the Task_Data structure and thus have to write the length
+				 * into the i2c_register. This trick saves us from copying the data
+				 */
+				ups_transaction.i2c_register = len;
+				osMessageQueuePut(*queue, &ups_transaction.rawdata, 0, 0);
+			}
+		}
 	}
 	if(reg_has_changed) {
 		backup_registers();
 	}
-}
-
-/*
- * Determine the correct transfer size depending on the current value
- * of the i2c_register
- */
-uint8_t i2c_calc_transfer_size( ) {
-	uint8_t len = 1 + 1; // 8bit by default + crc
-	if (i2c_register >= (enum I2C_Register) SPECIAL_16BIT_OFFSET) {
-		switch (i2c_register) {
-		case i2creg_version:
-			// 3 byte + crc
-			len = 3 + 1;
-			break;
-		case i2creg_write_to_eeprom:
-			// 1 byte + crc
-			len = 1 + 1;
-			break;
-		default:
-			break;
-		}
-	} else if (i2c_register >= (enum I2C_Register) CONFIG_16BIT_OFFSET) {
-		// We have a 16bit register + crc
-		len = 2 + 1;
-	}
-	return len;
 }
 
 /*
@@ -329,50 +366,32 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 	if (i2c_primary_address) {
 		// the UPS is accessed
 
-		uint8_t len;
+		uint8_t len, i2c_register;
 		switch (TransferDirection) {
 		case I2C_DIRECTION_TRANSMIT:
-			// we receive the register and later its contents in
-			// HAL_I2C_SlaveRxCpltCallback(). We use 8-bit registers,
-			// thus the length is 1.
-			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, i2c1_buffer, 1, I2C_FIRST_FRAME); // read the register
+			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, ups_transaction.rawdata, I2C_BUFFER_SIZE, I2C_LAST_FRAME);
 			break;
 		case I2C_DIRECTION_RECEIVE:
 			// we copy the data to the buffer and send it to the RPi
 			i2c_register = hi2c->Instance->DR;
-			len = i2c_calc_transfer_size();
-			i2c_writeRegisterToBuffer(i2c_register);
-			i2c1_buffer[len - 1] = calcCRC(i2c_register, i2c1_buffer, len - 1);
-			HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, i2c1_buffer, len, I2C_LAST_FRAME);
+			len = i2c_writeRegisterToBuffer(i2c_register, ups_transaction.tdata);
+			ups_transaction.tdata[len - 1] = calcCRC(i2c_register, ups_transaction.tdata, len - 1);
+			HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, ups_transaction.tdata, len, I2C_LAST_FRAME);
 			break;
 		default:
 			break;
 		}
 	} else {
 		// the RTC is accessed
+		uint8_t sizeOfData;
 		switch(TransferDirection){
 		case I2C_DIRECTION_TRANSMIT:
-			cmd.address = AddrMatchCode;
-			//HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
-			i2c_in_progress_rtc = false;
-			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, slaveReceiveBuffer, SLAVE_BUFFER_SIZE, I2C_FIRST_FRAME);
+			//HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, slaveReceiveBuffer, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
+			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, rtc_transaction.rawdata, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
 			break;
 		case I2C_DIRECTION_RECEIVE:
-			if(i2c_in_progress_rtc == false){
-				// TODO change this to an array of fuctions
-				slaveTransmitBuffer = (uint8_t*)getRegister(slaveReceiveBuffer[1]);
-				sizeOfData = 8;
-				HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, slaveTransmitBuffer, sizeOfData, I2C_LAST_FRAME);
-				/*
-				cmd.cmd_size=2;
-				i2c_in_progress_rtc = true;
-				memcpy(cmd.data, slaveReceiveBuffer, cmd.cmd_size);
-				xQueueSendFromISR(RTC_R_QueueHandle, &cmd, &xHigherPriorityTaskWoken);
-				if(xHigherPriorityTaskWoken){
-					portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-				}
-				*/
-			}
+			sizeOfData = rtc_get_RTC_register(rtc_transaction.rdata[0], rtc_transaction.tdata);
+			HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, rtc_transaction.tdata, sizeOfData, I2C_LAST_FRAME);
 			break;
 		default:
 			break;
@@ -380,6 +399,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 
 	}
 }
+
 
 /*
  * This callback is called when the RPi wants to send data
@@ -388,44 +408,9 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
  * and starts a second call to receive the actual data.
  */
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-
-	if(i2c_primary_address) {
-		// UPS code
-		if(i2c_in_progress) {
-			// This is the second call triggered by the
-			// "else"-path of this statement, in which we
-			// have extracted the register number.
-			// We now have received the data, check the CRC
-			// and save it to the correct register.
-			i2c_in_progress = false;
-
-			uint8_t len = hi2c->XferSize - 1;
-			// check crc
-			uint8_t crc = calcCRC(i2c_register, i2c1_buffer, len);
-
-			// copy value if crc is correct
-			if(crc == i2c1_buffer[len]) {
-				i2c_writeBufferToRegister(i2c_register);
-			}
-		}
-		else {
-			// This is the first call, triggered by
-			// HAL_I2C_AddrCallback(). We extract the
-			// i2c_register to use it in the next round.
-			i2c_in_progress = true;
-			i2c_register = i2c1_buffer[0];
-			uint8_t len	= i2c_calc_transfer_size();
-			//HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, i2c1_buffer, len, I2C_LAST_FRAME);
-		}
-	} else {
-		// RTC code
-
-	}
-
-
-	//HAL_I2C_EnableListen_IT(&hi2c1);
-
+	HAL_I2C_EnableListen_IT(&hi2c1);
 }
+
 
 /*
  * This callback is called when the data from the charger
@@ -445,47 +430,54 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	// We don't need to check the return value because it
 	// can only be HAL_OK or HAL_BUSY, either way I2C is
 	// listening after this call
+	// TODO remove as soon as we use our own I2C channel
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
+
 
 /*
  * We restart the I2C listening mode
  */
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
-	i2c_in_progress = false;
 
-	cmd.cmd_size = (hi2c->XferCount == 0) ? 2 : (uint8_t)(SLAVE_BUFFER_SIZE - hi2c->XferCount);
-	if(cmd.cmd_size > 0 && cmd.cmd_size < SLAVE_BUFFER_SIZE && i2c_in_progress_rtc == false){
+	if(i2c_primary_address)  {
+		uint8_t len = (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
+		if(len != 0) {
+			uint8_t data_len = len - 2;
+			ups_transaction.data_size = data_len;
 
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		memcpy(cmd.data, slaveReceiveBuffer, cmd.cmd_size);
-		xQueueSendFromISR(RTC_R_QueueHandle, &cmd, &xHigherPriorityTaskWoken);
-		//ds3231_cmd_decode(cmd);
-		memset(slaveReceiveBuffer, 0, SLAVE_BUFFER_SIZE);
-		if(xHigherPriorityTaskWoken){
-			portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+			// check crc and copy value if crc is correct
+			uint8_t crc = calcCRC(ups_transaction.i2c_register, ups_transaction.rdata, data_len);
+			if(crc == ups_transaction.rdata[data_len]) {
+				i2c_writeBufferToRegister(ups_transaction.i2c_register, ups_transaction.rdata, data_len);
+			}
+		}
+	} else {
+		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 2 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
+		if(rtc_transaction.data_size > 0 && rtc_transaction.data_size < I2C_BUFFER_SIZE) {
+			osMessageQueuePut(RTC_R_QueueHandle, &rtc_transaction, 0, 0);
 		}
 	}
-	//i2c_in_progress_rtc = false;
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
 }
+
 
 /*
  * The following callbacks simply set the i2c_in_progress
  * value back to false in case something goes wrong.
  */
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
-	i2c_in_progress = false;
-	//HAL_I2C_EnableListen_IT(&hi2c1);
+//	ups_transaction.i2c_in_progress = false;
+	HAL_I2C_EnableListen_IT(&hi2c1);
 }
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
-	i2c_in_progress = false;
-	//HAL_I2C_EnableListen_IT(&hi2c1);
+//	ups_transaction.i2c_in_progress = false;
+	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c) {
-	i2c_in_progress = false;
+//	ups_transaction.i2c_in_progress = false;
 	HAL_I2C_EnableListen_IT(&hi2c1);
 }
 

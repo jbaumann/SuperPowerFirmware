@@ -42,6 +42,11 @@ void MX_RTC_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
+static const uint8_t rtc_data_size = 6;
+
+uint8_t rtc_get_RTC_register(uint8_t reg, uint8_t tdata[]);
+void rtc_msg_decode(uint8_t cmd_size, uint8_t data[]);
+
 //uint32_t rtc_read_backup_reg(uint32_t backup_register);
 //void rtc_write_backup_reg(uint32_t backup_register, uint32_t data);
 

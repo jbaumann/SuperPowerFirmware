@@ -25,6 +25,8 @@
 
 RTC_TimeTypeDef time;
 RTC_DateTypeDef date;
+char timebuffer[] = {0,0,0,0,0,0,0,0,0,0,0}; // is the initialization necessary?
+//uint16_t addr = 0;
 
 /* USER CODE END 0 */
 
@@ -110,6 +112,91 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+uint8_t rtc_get_RTC_register(uint8_t reg, uint8_t tdata[]){
+	//char* ptr = NULL;
+	RTC_TimeTypeDef time;
+	RTC_DateTypeDef date;
+	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
+	HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
+
+	tdata[0] = time.Seconds;
+	tdata[1] = time.Minutes;
+	tdata[2] = time.Hours;
+	tdata[3] = date.WeekDay;
+	tdata[4] = date.Date;
+	tdata[5] = date.Month;
+	tdata[6] = date.Year;
+	tdata[7] = 0;
+
+	return 8;
+}
+
+
+void rtc_msg_decode(uint8_t cmd_size, uint8_t data[]){
+
+	// TODO Refactor
+
+	uint8_t aux = cmd_size;
+	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
+	HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BCD);
+	switch(data[0]){
+	case 0:
+		if(aux-- > 0){
+			time.Seconds = data[0];
+			__attribute__ ((fallthrough));
+		}else{
+			break;
+		}
+	case 1:
+		if(aux-- > 0){
+			time.Minutes = data[1];
+			__attribute__ ((fallthrough));
+		}else{
+			break;
+		}
+	case 2:
+		if(aux-- > 0){
+			time.Hours = data[2];
+			__attribute__ ((fallthrough));
+		}else{
+			break;
+		}
+	case 3:
+		if(aux-- > 0){
+			date.WeekDay = data[3];
+			__attribute__ ((fallthrough));
+		}else{
+			break;
+		}
+	case 4:
+		if(aux-- > 0){
+			date.Date = data[4];
+			__attribute__ ((fallthrough));
+		}else{
+			break;
+		}
+	case 5:
+		if(aux-- > 0){
+			date.Month = data[5];
+			__attribute__ ((fallthrough));
+		}else{
+			break;
+		}
+	case 6:
+		if(aux-- > 0){
+			date.Year = data[6];
+			__attribute__ ((fallthrough));
+		}else{
+			break;
+		}
+	default:
+		break;
+	}
+	HAL_RTC_SetTime(&hrtc, &time, RTC_FORMAT_BCD);
+	HAL_RTC_SetDate(&hrtc, &date, RTC_FORMAT_BCD);
+}
+
 
 /*
  * Basic read and write from backup register.Based on
