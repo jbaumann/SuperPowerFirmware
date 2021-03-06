@@ -195,7 +195,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of I2C_R_Queue */
-  I2C_R_QueueHandle = osMessageQueueNew (1, sizeof(i2c_cmd), &I2C_R_Queue_attributes);
+  I2C_R_QueueHandle = osMessageQueueNew (128, sizeof(uint16_t), &I2C_R_Queue_attributes);
 
   /* creation of RTC_R_Queue */
   RTC_R_QueueHandle = osMessageQueueNew (2, sizeof(Task_Data), &RTC_R_Queue_attributes);
@@ -286,7 +286,7 @@ void I2C_Task(void *argument)
 * @retval None
 */
 /* USER CODE END Header_RTC_Task */
-__weak void RTC_Task(void *argument)
+void RTC_Task(void *argument)
 {
   /* USER CODE BEGIN RTC_Task */
 	/* Infinite loop */
