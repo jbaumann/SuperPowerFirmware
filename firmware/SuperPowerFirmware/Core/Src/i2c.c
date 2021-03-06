@@ -454,9 +454,12 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 			}
 		}
 	} else {
-		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 2 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
+		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 0 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
 		if(rtc_transaction.data_size > 0 && rtc_transaction.data_size < I2C_BUFFER_SIZE) {
-			osMessageQueuePut(RTC_R_QueueHandle, &rtc_transaction, 0, 0);
+			Task_Data cmd;
+			cmd.data_size = rtc_transaction.data_size;
+			memcpy(cmd.data, rtc_transaction.rawdata, cmd.data_size);
+			osMessageQueuePut(RTC_R_QueueHandle, &cmd, 0, 0);
 		}
 	}
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart

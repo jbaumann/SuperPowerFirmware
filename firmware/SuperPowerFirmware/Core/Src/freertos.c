@@ -159,6 +159,18 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 }
 /* USER CODE END 4 */
 
+/* USER CODE BEGIN PREPOSTSLEEP */
+__weak void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
+{
+/* place for user code */
+}
+
+__weak void PostSleepProcessing(uint32_t *ulExpectedIdleTime)
+{
+/* place for user code */
+}
+/* USER CODE END PREPOSTSLEEP */
+
 /**
   * @brief  FreeRTOS initialization
   * @param  None
@@ -186,7 +198,7 @@ void MX_FREERTOS_Init(void) {
   I2C_R_QueueHandle = osMessageQueueNew (1, sizeof(i2c_cmd), &I2C_R_Queue_attributes);
 
   /* creation of RTC_R_Queue */
-  RTC_R_QueueHandle = osMessageQueueNew (2, sizeof(i2c_cmd), &RTC_R_Queue_attributes);
+  RTC_R_QueueHandle = osMessageQueueNew (2, sizeof(Task_Data), &RTC_R_Queue_attributes);
 
   /* creation of Statemachine_R_Queue */
   Statemachine_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &Statemachine_R_Queue_attributes);
@@ -277,12 +289,17 @@ void I2C_Task(void *argument)
 __weak void RTC_Task(void *argument)
 {
   /* USER CODE BEGIN RTC_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-	  //uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
-    osDelay(1);
-  }
+	/* Infinite loop */
+	Task_Data msg;
+	osStatus_t status;
+	for(;;)
+	{
+		status = osMessageQueueGet(RTC_R_QueueHandle, &msg, NULL, osWaitForever);
+		if(status ==osOK){
+			debug_print("RTC_Task receive, ");
+			rtc_msg_decode(msg.data_size, msg.data);
+		}
+	}
   /* USER CODE END RTC_Task */
 }
 

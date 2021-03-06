@@ -43,7 +43,7 @@ void MX_RTC_Init(void)
   hrtc.Instance = RTC;
   hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
   hrtc.Init.AsynchPrediv = 127;
-  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.SynchPrediv = 250;
   hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
   hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
@@ -73,6 +73,12 @@ void MX_RTC_Init(void)
   sDate.Year = 0x0;
 
   if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Enable Calibrartion
+  */
+  if (HAL_RTCEx_SetCalibrationOutPut(&hrtc, RTC_CALIBOUTPUT_512HZ) != HAL_OK)
   {
     Error_Handler();
   }
@@ -143,49 +149,49 @@ void rtc_msg_decode(uint8_t cmd_size, uint8_t data[]){
 	switch(data[0]){
 	case 0:
 		if(aux-- > 0){
-			time.Seconds = data[0];
+			time.Seconds = data[1];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 1:
 		if(aux-- > 0){
-			time.Minutes = data[1];
+			time.Minutes = data[2];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 2:
 		if(aux-- > 0){
-			time.Hours = data[2];
+			time.Hours = data[3];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 3:
 		if(aux-- > 0){
-			date.WeekDay = data[3];
+			date.WeekDay = data[4];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 4:
 		if(aux-- > 0){
-			date.Date = data[4];
+			date.Date = data[5];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 5:
 		if(aux-- > 0){
-			date.Month = data[5];
+			date.Month = data[6];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 6:
 		if(aux-- > 0){
-			date.Year = data[6];
+			date.Year = data[7];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
