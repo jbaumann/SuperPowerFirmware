@@ -257,25 +257,15 @@ void I2C_Task(void *argument)
   /* USER CODE BEGIN I2C_Task */
 	I2C_QueueMsg_t msg;
 	osStatus_t status;
-	i2c_cmd cmd;
-	uint8_t qs = 0;
 
-	extern _Bool i2c_in_progress_rtc;
 	/* Infinite loop */
-	xQueueReceive(I2C_R_QueueHandle, &cmd, 100);
 	for (;;) {
 		status = osMessageQueueGet(I2C_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
 		if (status == osOK) {
 			debug_print("I2C_Task receive, ");
 			//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		}
-		//status = osMessageQueueGet(I2C_R_QueueHandle, &cmd, NULL, osWaitForever); // wait for message
-		//if (status == osOK) {
-		//	printf("Hello receive, ");
-		//	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		//}
 	}
-	// osDelay(1);
   /* USER CODE END I2C_Task */
 }
 
