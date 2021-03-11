@@ -186,7 +186,7 @@ void MX_FREERTOS_Init(void) {
   I2C_R_QueueHandle = osMessageQueueNew (128, sizeof(uint16_t), &I2C_R_Queue_attributes);
 
   /* creation of RTC_R_Queue */
-  RTC_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &RTC_R_Queue_attributes);
+  RTC_R_QueueHandle = osMessageQueueNew (16, sizeof(Task_Data), &RTC_R_Queue_attributes);
 
   /* creation of Statemachine_R_Queue */
   Statemachine_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &Statemachine_R_Queue_attributes);
