@@ -98,6 +98,7 @@ typedef union {
 	struct _I2C_Special_Register_16Bit {               // _EXTRACT_I2C_REGISTER_
 		__IO uint8_t version;
 		__IO uint8_t write_to_eeprom;
+		__IO uint8_t jump_to_bootloader;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint16_t reg[sizeof(struct _I2C_Special_Register_16Bit)];
 } I2C_Special_Register_16Bit;
@@ -177,6 +178,7 @@ enum I2C_Register {
 	// I2C Special Registers
 	i2creg_version                 = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.version),
 	i2creg_write_to_eeprom         = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.write_to_eeprom),
+	i2creg_jump_to_bootloader       = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.jump_to_bootloader),
 
 }__attribute__ ((__packed__));            // force smallest size i.e., uint_8t (GCC syntax)
 

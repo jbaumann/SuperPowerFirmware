@@ -26,7 +26,7 @@
 
 RTC_TimeTypeDef time;
 RTC_DateTypeDef date;
-char timebuffer[] = {0,0,0,0,0,0,0,0,0,0,0}; // is the initialization necessary?
+//char timebuffer[] = {0,0,0,0,0,0,0,0,0,0,0}; // is the initialization necessary?
 //uint16_t addr = 0;
 
 /* USER CODE END 0 */
@@ -144,49 +144,49 @@ void rtc_msg_decode(uint8_t cmd_size, uint8_t data[]){
 	switch(data[0]){
 	case 0:
 		if(aux-- > 0){
-			time.Seconds = data[0];
+			time.Seconds = data[1];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 1:
 		if(aux-- > 0){
-			time.Minutes = data[1];
+			time.Minutes = data[2];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 2:
 		if(aux-- > 0){
-			time.Hours = data[2];
+			time.Hours = data[3];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 3:
 		if(aux-- > 0){
-			date.WeekDay = data[3];
+			date.WeekDay = data[4];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 4:
 		if(aux-- > 0){
-			date.Date = data[4];
+			date.Date = data[5];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 5:
 		if(aux-- > 0){
-			date.Month = data[5];
+			date.Month = data[6];
 			__attribute__ ((fallthrough));
 		}else{
 			break;
 		}
 	case 6:
 		if(aux-- > 0){
-			date.Year = data[6];
+			date.Year = data[7];
 			__attribute__ ((fallthrough));
 		}else{
 			break;

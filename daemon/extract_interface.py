@@ -317,6 +317,29 @@ class_functions = """
             "Couldn't read version information after " + str(x) + " retries.")
         return (0xFFFF, 0xFFFF, 0xFFFF)
 
+    def jump_to_bootloader(self):
+        register = self.JUMP_TO_BOOTLOADER
+        value = 1
+
+        crc = self.addCrc(0, register)
+        crc = self.addCrc(crc, value)
+
+        arg_list = [value, crc]
+        for x in range(self._num_retries):
+            bus = smbus.SMBus(self._bus_number)
+            time.sleep(self._time_const)
+            try:
+                bus.write_i2c_block_data(self._address, register, arg_list)
+                bus.close()
+                return True
+            except Exception as e:
+                logging.debug("Couldn't jump to bootloader " + \
+                              hex(register) + ". Exception: " + str(e))
+        logging.warning("Couldn't jump to bootloader after " + \
+                        str(x) + " retries.")
+        return False
+
+
     def get_uptime(self):
         for x in range(self._num_retries):
             bus = smbus.SMBus(self._bus_number)

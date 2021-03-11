@@ -26,7 +26,6 @@ Config_Registers config_registers = {
 		// 8 Bit config registers
 		.val.i2c_config_register_8bit.val.primed                  =    0,   // 1 if the uC should control the system
 		.val.i2c_config_register_8bit.val.force_shutdown          =    0,   // 1 if the uC should shutdown the UPS if the voltage is too low (hard shutdown)
-		.val.i2c_config_register_8bit.val.enable_bootloader       =    0,   // 1 if the bootloader is enabled
 
 		// 16 Bit config registers
 		.val.i2c_config_register_16bit.val.timeout                =  120,   // the timeout for the reset, should cover shutdown and reboot

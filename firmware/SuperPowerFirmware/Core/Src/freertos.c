@@ -266,12 +266,16 @@ void I2C_Task(void *argument)
 void RTC_Task(void *argument)
 {
   /* USER CODE BEGIN RTC_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-	  //uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
-    osDelay(1);
-  }
+	Task_Data msg;
+	osStatus_t status;
+	for(;;)
+	{
+		status = osMessageQueueGet(RTC_R_QueueHandle, &msg, NULL, osWaitForever);
+		if(status ==osOK){
+//			debug_print("RTC_Task receive, ");
+			rtc_msg_decode(msg.data_size, msg.data);
+		}
+	}
   /* USER CODE END RTC_Task */
 }
 
@@ -309,50 +313,35 @@ void VoltageMeasurement_Task(void *argument)
 
 
 	// on first execution
-	ret_val = ch_init(&hi2c1);
+	ret_val = ch_init(&hi2c3);
 
 	/* Infinite loop */
 	for (;;) {
 
-		// Turn the I2C slave functionality off
-		ret_val = HAL_I2C_DisableListen_IT(&hi2c1);
-
-		if(hi2c1.State == HAL_I2C_STATE_READY) {
+		if (hi2c3.State == HAL_I2C_STATE_READY) {
 			// start ADC conversion
-			ret_val = ch_transfer_byte_to_register(&hi2c1, CH_CONV_ADC, CH_CONV_ADC_START);
+			ret_val = ch_transfer_byte_to_register(&hi2c3, CH_CONV_ADC,
+					CH_CONV_ADC_START);
 
-			if(ret_val == HAL_OK) {
-				// We are waiting for the ADC to finish its conversion and
-				// switch back to listen mode for until it is done
-				HAL_I2C_EnableListen_IT(&hi2c1);
+			if (ret_val == HAL_OK) {
 				osDelay(ch_conv_delay); // time for conversion, see 8.2.8 Battery Monitor on p.24
-				ret_val = HAL_I2C_DisableListen_IT(&hi2c1);
-				if(ret_val == HAL_OK) {
-					// Read values from charger
-					uint8_t reg = CH_STATUS;
-					ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
-					if(ret_val == HAL_OK) {
-						ret_val = HAL_I2C_Master_Receive_IT(&hi2c1, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
-					} else if(ret_val == HAL_ERROR) { // Master Transmit Address
-						// This should never happen because we just did a successful
-						// transmit a second ago. We have to ignore this and hope for
-						// the next time.
-					}
-				} else if(ret_val == HAL_ERROR) { // Disable Listen
-					// if we can't turn off the listen mode then there
-					// is an ongoing communication between RPi and us.
-					// We'll try again next time
+				// Read values from charger
+				uint8_t reg = CH_STATUS;
+				ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
+				if (ret_val == HAL_OK) {
+					ret_val = HAL_I2C_Master_Receive_IT(&hi2c3, CHARGER_ADDRESS,
+							i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
+				} else if (ret_val == HAL_ERROR) { // Master Transmit Address
+					// This should never happen because we just did a successful
+					// transmit a second ago. We have to ignore this and hope for
+					// the next time.
 				}
-			} else if(ret_val == HAL_ERROR) { // Master_Transmit ADC
+			} else if (ret_val == HAL_ERROR) { // Master_Transmit ADC
 				// cannot transmit data to the charger, means the device
 				// is not reachable. We simply ignore this and wait for
 				// it to come online.
 			}
 		}
-		if(ret_val != HAL_OK) {
-			HAL_I2C_EnableListen_IT(&hi2c1);
-		}
-
 		osDelay(ch_update_interval);
 
 	}
@@ -442,19 +431,20 @@ void Test_Task(void *argument)
   /* USER CODE BEGIN Test_Task */
 	Task_Data msg;
 	osStatus_t status;
+	uint32_t waiting_time = 1000;
+	uint8_t len = 0;
   /* Infinite loop */
   for(;;)
   {
-		status = osMessageQueueGet(Test_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
+		status = osMessageQueueGet(Test_R_QueueHandle, &msg, NULL, waiting_time); // wait for message
 		if (status == osOK) {
 			// copy msg to test_task_data
-			uint8_t len = (msg.data_size > sizeof(test_task_data)) ? sizeof(test_task_data) : msg.data_size;
+			len = (msg.data_size > sizeof(test_task_data)) ? sizeof(test_task_data) : msg.data_size;
 			memcpy(test_task_data, msg.data, len);
-
-			// Here comes the business logic
-			for (uint8_t i = 0; i < len; i++) {
-				test_task_data[i] *= 2;
-			}
+		}
+		// Here comes the business logic
+		for (uint8_t i = 0; i < len; i++) {
+			test_task_data[i] += 1;
 		}
 
   }

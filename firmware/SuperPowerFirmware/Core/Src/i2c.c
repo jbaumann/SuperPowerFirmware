@@ -78,6 +78,7 @@ uint32_t prog_version = (MAJOR << 16) | (MINOR << 8) | PATCH;
 /* USER CODE END 0 */
 
 I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c3;
 DMA_HandleTypeDef hdma_i2c1_rx;
 DMA_HandleTypeDef hdma_i2c1_tx;
 
@@ -95,6 +96,25 @@ void MX_I2C1_Init(void)
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
   hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+}
+/* I2C3 init function */
+void MX_I2C3_Init(void)
+{
+
+  hi2c3.Instance = I2C3;
+  hi2c3.Init.ClockSpeed = 100000;
+  hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c3.Init.OwnAddress1 = 0;
+  hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c3.Init.OwnAddress2 = 0;
+  hi2c3.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c3.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -171,6 +191,44 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
 
   /* USER CODE END I2C1_MspInit 1 */
   }
+  else if(i2cHandle->Instance==I2C3)
+  {
+  /* USER CODE BEGIN I2C3_MspInit 0 */
+
+  /* USER CODE END I2C3_MspInit 0 */
+
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    /**I2C3 GPIO Configuration
+    PC9     ------> I2C3_SDA
+    PA8     ------> I2C3_SCL
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_9;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C3;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_8;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C3;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /* I2C3 clock enable */
+    __HAL_RCC_I2C3_CLK_ENABLE();
+
+    /* I2C3 interrupt Init */
+    HAL_NVIC_SetPriority(I2C3_EV_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(I2C3_EV_IRQn);
+    HAL_NVIC_SetPriority(I2C3_ER_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(I2C3_ER_IRQn);
+  /* USER CODE BEGIN I2C3_MspInit 1 */
+
+  /* USER CODE END I2C3_MspInit 1 */
+  }
 }
 
 void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
@@ -202,6 +260,29 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
   /* USER CODE BEGIN I2C1_MspDeInit 1 */
 
   /* USER CODE END I2C1_MspDeInit 1 */
+  }
+  else if(i2cHandle->Instance==I2C3)
+  {
+  /* USER CODE BEGIN I2C3_MspDeInit 0 */
+
+  /* USER CODE END I2C3_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_I2C3_CLK_DISABLE();
+
+    /**I2C3 GPIO Configuration
+    PC9     ------> I2C3_SDA
+    PA8     ------> I2C3_SCL
+    */
+    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_9);
+
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_8);
+
+    /* I2C3 interrupt Deinit */
+    HAL_NVIC_DisableIRQ(I2C3_EV_IRQn);
+    HAL_NVIC_DisableIRQ(I2C3_ER_IRQn);
+  /* USER CODE BEGIN I2C3_MspDeInit 1 */
+
+  /* USER CODE END I2C3_MspDeInit 1 */
   }
 }
 
@@ -322,6 +403,13 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 
 	} else if (register_number < (enum I2C_Register)TASK_COMMUNICATION) {
 		/* access to the SPECIAL_16BIT struct */
+		if(register_number == i2creg_jump_to_bootloader) {
+			if(i2c_config_register_8bit->val.enable_bootloader != 0) {
+				// we are jumping into the bootloader
+				jumpToBootloader();
+			}
+		}
+
 
 	} else {
 		/* access to the task communication */
@@ -375,19 +463,21 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 	} else {
 		// the RTC is accessed
 		uint8_t sizeOfData;
-		switch(TransferDirection){
+		switch (TransferDirection) {
 		case I2C_DIRECTION_TRANSMIT:
 			//HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, slaveReceiveBuffer, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
-			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, rtc_transaction.rawdata, I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
+			HAL_I2C_Slave_Seq_Receive_DMA(&hi2c1, rtc_transaction.rawdata,
+					I2C_BUFFER_SIZE, I2C_FIRST_FRAME);
 			break;
 		case I2C_DIRECTION_RECEIVE:
-			sizeOfData = rtc_get_RTC_register(rtc_transaction.rdata[0], rtc_transaction.tdata);
-			HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, rtc_transaction.tdata, sizeOfData, I2C_LAST_FRAME);
+			sizeOfData = rtc_get_RTC_register(rtc_transaction.rdata[0],
+					rtc_transaction.tdata);
+			HAL_I2C_Slave_Seq_Transmit_DMA(&hi2c1, rtc_transaction.tdata,
+					sizeOfData, I2C_LAST_FRAME);
 			break;
 		default:
 			break;
 		}
-
 	}
 }
 
@@ -422,8 +512,9 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	// can only be HAL_OK or HAL_BUSY, either way I2C is
 	// listening after this call
 	// TODO remove as soon as we use our own I2C channel
-	HAL_I2C_EnableListen_IT(&hi2c1);
-
+	if(hi2c == &hi2c1) {
+		HAL_I2C_EnableListen_IT(&hi2c1);
+	}
 }
 
 
@@ -445,9 +536,17 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 			}
 		}
 	} else {
-		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 2 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
+//		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 2 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
+//		if(rtc_transaction.data_size > 0 && rtc_transaction.data_size < I2C_BUFFER_SIZE) {
+//			osMessageQueuePut(RTC_R_QueueHandle, &rtc_transaction, 0, 0);
+//		}
+		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 0 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
+		// TODO use remapping to avoid copying
 		if(rtc_transaction.data_size > 0 && rtc_transaction.data_size < I2C_BUFFER_SIZE) {
-			osMessageQueuePut(RTC_R_QueueHandle, &rtc_transaction, 0, 0);
+			Task_Data cmd;
+			cmd.data_size = rtc_transaction.data_size;
+			memcpy(cmd.data, rtc_transaction.rawdata, cmd.data_size);
+			osMessageQueuePut(RTC_R_QueueHandle, &cmd, 0, 0);
 		}
 	}
 	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
