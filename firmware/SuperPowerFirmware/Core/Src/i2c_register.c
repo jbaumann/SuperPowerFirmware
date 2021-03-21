@@ -35,6 +35,7 @@ Config_Registers config_registers = {
 };
 
 I2C_Status_Register_8Bit _i2c_status_register_8bit = {
+	.val.charger_contact         =    0,   // if != 0 contact with the charger chip has been established
 	.val.should_shutdown         =    0,   // if != 0 contains the motivation for why the RPi should shutdown
 	.val.charger_status          =    0,   // contains the contents of the status register 0x0E
 };

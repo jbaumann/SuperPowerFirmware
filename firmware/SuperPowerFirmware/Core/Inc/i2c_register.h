@@ -51,6 +51,7 @@ typedef union {
 		__IO uint8_t primed;
 		__IO uint8_t force_shutdown;
 		__IO uint8_t enable_bootloader;
+		__IO uint8_t rtc_async_prediv;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint8_t reg[sizeof(struct _I2C_Config_Register_8Bit)];
 
@@ -60,6 +61,7 @@ typedef union {
 	struct _I2C_Status_Register_8Bit {                 // _EXTRACT_I2C_REGISTER_
 		__IO uint8_t should_shutdown;
 		__IO uint8_t charger_status;
+		__IO uint8_t charger_contact;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint8_t reg[sizeof(struct _I2C_Status_Register_8Bit)];
 } I2C_Status_Register_8Bit;
@@ -71,6 +73,7 @@ typedef union {
 		__IO uint16_t restart_voltage;
 		__IO uint16_t warn_voltage;
 		__IO uint16_t ups_shutdown_voltage;
+		__IO uint16_t rtc_sync_prediv;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint16_t reg[sizeof(struct _I2C_Config_Register_16Bit) / 2]; // adjust for 16 bit
 } I2C_Config_Register_16Bit;
@@ -160,14 +163,17 @@ enum I2C_Register {
 	i2creg_primed                  = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.primed),
 	i2creg_force_shutdown          = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.force_shutdown),
 	i2creg_enable_bootloader       = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.enable_bootloader),
+	i2creg_rtc_async_prediv        = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.rtc_async_prediv),
 	// I2C_Status_Register_8Bit
 	i2creg_should_shutdown         = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.should_shutdown),
 	i2creg_charger_status          = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.charger_status),
+	i2creg_charger_contact         = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.charger_contact),
 	// I2C_Config_Register_16Bit
 	i2creg_timeout                 = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.timeout)/2,
 	i2creg_restart_voltage         = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.restart_voltage)/2,
 	i2creg_warn_voltage            = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.warn_voltage)/2,
 	i2creg_ups_shutdown_voltage    = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.ups_shutdown_voltage)/2,
+	i2creg_rtc_sync_prediv         = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.rtc_sync_prediv)/2,
 	// I2C_Status_Register_16Bit
 	i2creg_bat_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.bat_voltage)/2,
 	i2creg_charge_current          = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.charge_current)/2,

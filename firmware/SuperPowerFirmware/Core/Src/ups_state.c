@@ -28,22 +28,22 @@
 
 #include "ups_state.h"
 #include "main.h"
+#include "i2c_register.h"
 
 uint8_t ups_state;
 
 //temp
-uint32_t seconds;
-uint32_t timeout;
-uint8_t primed;
-uint8_t should_shutdown;
-uint16_t bat_voltage;
-uint16_t warn_voltage;
-uint16_t restart_voltage;
+uint32_t ups_seconds_since_last_contact;
+uint32_t ups_timeout;
+uint8_t ups_primed;
+uint8_t ups_rpi_should_shutdown;
+uint16_t ups_bat_voltage;
+uint16_t ups_warn_voltage;
+uint16_t ups_restart_voltage;
 uint16_t ups_shutdown_voltage;
-_Bool force_shutdown;
-//static const int BLINK_TIME = 100;
+_Bool ups_force_shutdown;
 _Bool vext_off_is_shutdown;
-static const int MIN_POWER_LEVEL = 4700;
+const int MIN_POWER_LEVEL = 4700;
 uint16_t ext_voltage;
 
 /*
@@ -51,17 +51,17 @@ uint16_t ext_voltage;
 */
 void voltage_dependent_state_change() {
 
-  if (bat_voltage <= ups_shutdown_voltage) {
+  if (ups_bat_voltage <= ups_shutdown_voltage) {
     if(ups_state < ups_warn_to_shutdown) {
       ups_state = ups_warn_to_shutdown;
     }
-  } else if (bat_voltage <= warn_voltage) {
+  } else if (ups_bat_voltage <= ups_warn_voltage) {
     if(ups_state < ups_warn_state) {
       ups_state = ups_warn_state;
-      should_shutdown |= shutdown_cause_bat_voltage;
+      ups_rpi_should_shutdown |= shutdown_cause_bat_voltage;
     }
-  } else if (bat_voltage <= restart_voltage) {
-    if (ups_state == ups_unclear_state && seconds > timeout) {
+  } else if (ups_bat_voltage <= ups_restart_voltage) {
+    if (ups_state == ups_unclear_state && ups_seconds_since_last_contact > ups_timeout) {
       // the RPi is not running, even after the timeout, so we assume that it
       // shut down, this means we come from a WARN_STATE or SHUTDOWN_STATE
       ups_state = ups_warn_state;
@@ -93,8 +93,8 @@ void act_on_state_change() {
   // not duplicate the code of the shutdown_state
   if (ups_state == ups_warn_to_shutdown) {
     // immediately turn off the system if force_shutdown is set
-    if (primed == 1) {
-      if (force_shutdown != 0) {
+    if (ups_primed == 1) {
+      if (ups_force_shutdown != 0) {
 //        ups_off();
       }
     }
@@ -110,18 +110,18 @@ void act_on_state_change() {
 //    reset_counter_Safe();
   } else if (ups_state == ups_shutdown_to_running) {
     // we have recovered from a shutdown and are now at a safe voltage
-    if (primed == 1) {
+    if (ups_primed == 1) {
 //      ups_on();
     }
 //    reset_counter_Safe();
     ups_state = ups_running_state;
-    should_shutdown = shutdown_cause_none;
+    ups_rpi_should_shutdown = shutdown_cause_none;
   } else if (ups_state == ups_warn_to_running) {
     // we have recovered from a warn state and are now at a safe voltage
     // we switch to State::running_state and let that state (below) handle
     // the restart
     ups_state = ups_running_state;
-    should_shutdown = shutdown_cause_none;
+    ups_rpi_should_shutdown = shutdown_cause_none;
   } else if (ups_state == ups_unclear_state) {
     // we do nothing and wait until either a timeout occurs, the voltage
     // drops to warn_voltage or is higher than restart_voltage (see handle_state())
@@ -133,11 +133,11 @@ void act_on_state_change() {
     if(vext_off_is_shutdown) {
       should_restart = ext_voltage < MIN_POWER_LEVEL;
     } else {
-        should_restart = seconds > timeout;
+        should_restart = ups_seconds_since_last_contact > ups_timeout;
     }
 
     if (should_restart) {
-      if (primed == 1) {
+      if (ups_primed == 1) {
         // RPi has not accessed the I2C interface for more than timeout seconds.
         // We restart it. Signal restart by blinking ten times
 //        blink_led(10, BLINK_TIME / 2);
@@ -152,7 +152,7 @@ void act_on_state_change() {
 void handle_state() {
   // Turn the LED on
   if (ups_state <= ups_warn_state) {
-    if (primed == 1 || (seconds < timeout) ) {
+    if (ups_primed == 1 || (ups_seconds_since_last_contact < ups_timeout) ) {
       // start the regular blink if either primed is set or we are not yet in a timeout.
 //      ledOn_buttonOff();
     }
@@ -166,8 +166,8 @@ void handle_state() {
   // already signalled that it is doing so
   if (ups_state <= ups_warn_state) {
     // we first check whether the Raspberry is already in the shutdown process
-    if(!(should_shutdown & shutdown_cause_rpi_initiated)) {
-      if (should_shutdown > shutdown_cause_rpi_initiated && (seconds < timeout)) {
+    if(!(ups_rpi_should_shutdown & shutdown_cause_rpi_initiated)) {
+      if (ups_rpi_should_shutdown > shutdown_cause_rpi_initiated && (ups_seconds_since_last_contact < ups_timeout)) {
         // RPi should take action, possibly shut down. Signal by blinking 5 times
 //        blink_led(5, BLINK_TIME);
       }

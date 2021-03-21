@@ -99,7 +99,7 @@ int main(void)
   MX_TIM5_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
-  //TODO Move to RTC_Init()?
+
   restore_registers();
 
   HAL_TIM_Base_Start_IT(&htim5);
