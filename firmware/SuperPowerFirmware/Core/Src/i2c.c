@@ -431,6 +431,12 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 	if(reg_has_changed) {
 		backup_registers();
 	}
+	// check for RTC register change and trigger re-init
+	if(register_number == i2creg_rtc_async_prediv || register_number == i2creg_rtc_sync_prediv) {
+		// TODO Check whether this enough or whether the RTC has to
+		// be de-initialized first
+		MX_RTC_Init();
+	}
 }
 
 /*
@@ -499,21 +505,17 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
  * information and turn the listen mode back on
  */
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-	i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
-	uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
-	i2c_status_register_16bit->val.bat_voltage = batv;
-	uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
-	i2c_status_register_16bit->val.vbus_voltage = vbus_v;
-	uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
-	i2c_status_register_16bit->val.charge_current = ch_current;
+	if(hi2c == &hi2c3) {
+		i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
+		uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
+		i2c_status_register_16bit->val.bat_voltage = batv;
+		uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
+		i2c_status_register_16bit->val.vbus_voltage = vbus_v;
+		uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
+		i2c_status_register_16bit->val.charge_current = ch_current;
 
-	// Turn the slave functionality on again
-	// We don't need to check the return value because it
-	// can only be HAL_OK or HAL_BUSY, either way I2C is
-	// listening after this call
-	// TODO remove as soon as we use our own I2C channel
-	if(hi2c == &hi2c1) {
-		HAL_I2C_EnableListen_IT(&hi2c1);
+		// ok, contact has been established, we can use the values
+		i2c_status_register_8bit->val.charger_contact = true;
 	}
 }
 
@@ -536,12 +538,7 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 			}
 		}
 	} else {
-//		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 2 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
-//		if(rtc_transaction.data_size > 0 && rtc_transaction.data_size < I2C_BUFFER_SIZE) {
-//			osMessageQueuePut(RTC_R_QueueHandle, &rtc_transaction, 0, 0);
-//		}
 		rtc_transaction.data_size = (hi2c->XferCount == 0) ? 0 : (uint8_t)(I2C_BUFFER_SIZE - hi2c->XferCount);
-		// TODO use remapping to avoid copying
 		if(rtc_transaction.data_size > 0 && rtc_transaction.data_size < I2C_BUFFER_SIZE) {
 			Task_Data cmd;
 			cmd.data_size = rtc_transaction.data_size;

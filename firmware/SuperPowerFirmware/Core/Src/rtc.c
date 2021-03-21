@@ -26,8 +26,6 @@
 
 RTC_TimeTypeDef time;
 RTC_DateTypeDef date;
-//char timebuffer[] = {0,0,0,0,0,0,0,0,0,0,0}; // is the initialization necessary?
-//uint16_t addr = 0;
 
 /* USER CODE END 0 */
 
@@ -43,8 +41,8 @@ void MX_RTC_Init(void)
   */
   hrtc.Instance = RTC;
   hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-  hrtc.Init.AsynchPrediv = 127;
-  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.AsynchPrediv = 0x1F;
+  hrtc.Init.SynchPrediv = 0x03FF;
   hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
   hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
@@ -54,6 +52,11 @@ void MX_RTC_Init(void)
   }
 
   /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /*
+   * The values for AsyncHPrediv and SynchPrediv have been taken from
+   * https://stm32f4-discovery.net/2014/07/library-19-use-internal-rtc-on-stm32f4xx-devices/
+   */
 
   /* USER CODE END Check_RTC_BKUP */
 

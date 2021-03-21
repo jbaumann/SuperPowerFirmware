@@ -16,12 +16,15 @@ class SuperPower:
     PRIMED = 0x00
     FORCE_SHUTDOWN = 0x01
     ENABLE_BOOTLOADER = 0x02
+    RTC_ASYNC_PREDIV = 0x03
     SHOULD_SHUTDOWN = 0x40
     CHARGER_STATUS = 0x41
+    CHARGER_CONTACT = 0x42
     TIMEOUT = 0x80
     RESTART_VOLTAGE = 0x81
     WARN_VOLTAGE = 0x82
     UPS_SHUTDOWN_VOLTAGE = 0x83
+    RTC_SYNC_PREDIV = 0x84
     BAT_VOLTAGE = 0xc0
     CHARGE_CURRENT = 0xc1
     VBUS_VOLTAGE = 0xc2
@@ -250,11 +253,20 @@ class SuperPower:
     def set_enable_bootloader(self, value):
         return self.set_8bit_value(self.ENABLE_BOOTLOADER, value)
 
+    def get_rtc_async_prediv(self):
+        return self.get_8bit_value(self.RTC_ASYNC_PREDIV)
+
+    def set_rtc_async_prediv(self, value):
+        return self.set_8bit_value(self.RTC_ASYNC_PREDIV, value)
+
     def get_should_shutdown(self):
         return self.get_8bit_value(self.SHOULD_SHUTDOWN)
 
     def get_charger_status(self):
         return self.get_8bit_value(self.CHARGER_STATUS)
+
+    def get_charger_contact(self):
+        return self.get_8bit_value(self.CHARGER_CONTACT)
 
     def get_timeout(self):
         return self.get_16bit_value(self.TIMEOUT)
@@ -279,6 +291,12 @@ class SuperPower:
 
     def set_ups_shutdown_voltage(self, value):
         return self.set_16bit_value(self.UPS_SHUTDOWN_VOLTAGE, value)
+
+    def get_rtc_sync_prediv(self):
+        return self.get_16bit_value(self.RTC_SYNC_PREDIV)
+
+    def set_rtc_sync_prediv(self, value):
+        return self.set_16bit_value(self.RTC_SYNC_PREDIV, value)
 
     def get_bat_voltage(self):
         return self.get_16bit_value(self.BAT_VOLTAGE)
