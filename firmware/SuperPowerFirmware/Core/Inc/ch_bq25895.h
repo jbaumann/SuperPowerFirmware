@@ -13,7 +13,6 @@
  * Intervals for communication with the charger
  */
 static const uint16_t ch_i2c_master_timeout =  1000;  // timeout in milliseconds
-static const uint16_t ch_update_interval    = 10000;  // update interval for the charger in milliseconds
 static const uint16_t ch_conv_delay         =  1000;  // time for conversion, see 8.2.8 Battery Monitor on p.24
 
 /*

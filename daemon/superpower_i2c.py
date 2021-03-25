@@ -28,9 +28,8 @@ class SuperPower:
     BAT_VOLTAGE = 0xc0
     CHARGE_CURRENT = 0xc1
     VBUS_VOLTAGE = 0xc2
-    EXT_VOLTAGE = 0xc3
-    SECONDS = 0xc4
-    TEMPERATURE = 0xc5
+    SECONDS = 0xc3
+    TEMPERATURE = 0xc4
     VERSION = 0xe0
     WRITE_TO_EEPROM = 0xe1
     JUMP_TO_BOOTLOADER = 0xe2
@@ -306,9 +305,6 @@ class SuperPower:
 
     def get_vbus_voltage(self):
         return self.get_16bit_value(self.VBUS_VOLTAGE)
-
-    def get_ext_voltage(self):
-        return self.get_16bit_value(self.EXT_VOLTAGE)
 
     def get_seconds(self):
         return self.get_16bit_value(self.SECONDS)

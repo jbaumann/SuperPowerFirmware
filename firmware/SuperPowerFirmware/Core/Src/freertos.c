@@ -26,12 +26,14 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
+
 #include <string.h>
-#include "adc.h"
 #include "i2c.h"
 #include "ch_bq25895.h"
 #include "rtc.h"
 #include "task_communication.h"
+#include "ups_state.h"
 
 // JB TODO move to external impl.
 #include "rtc.h"
@@ -74,13 +76,6 @@ const osThreadAttr_t RTC_attributes = {
 osThreadId_t StateMachineHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
-  .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 2048 * 4
-};
-/* Definitions for VoltageMeasurem */
-osThreadId_t VoltageMeasuremHandle;
-const osThreadAttr_t VoltageMeasurem_attributes = {
-  .name = "VoltageMeasurem",
   .priority = (osPriority_t) osPriorityLow,
   .stack_size = 2048 * 4
 };
@@ -132,7 +127,6 @@ const osMessageQueueAttr_t Test_R_Queue_attributes = {
 void I2C_Task(void *argument);
 void RTC_Task(void *argument);
 void StateMachine_Task(void *argument);
-void VoltageMeasurement_Task(void *argument);
 void LED_Task(void *argument);
 void Test_Task(void *argument);
 
@@ -211,9 +205,6 @@ void MX_FREERTOS_Init(void) {
   /* creation of StateMachine */
   StateMachineHandle = osThreadNew(StateMachine_Task, NULL, &StateMachine_attributes);
 
-  /* creation of VoltageMeasurem */
-  VoltageMeasuremHandle = osThreadNew(VoltageMeasurement_Task, NULL, &VoltageMeasurem_attributes);
-
   /* creation of LED */
   LEDHandle = osThreadNew(LED_Task, NULL, &LED_attributes);
 
@@ -290,25 +281,7 @@ void RTC_Task(void *argument)
 void StateMachine_Task(void *argument)
 {
   /* USER CODE BEGIN StateMachine_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StateMachine_Task */
-}
 
-/* USER CODE BEGIN Header_VoltageMeasurement_Task */
-/**
-* @brief Function implementing the VoltageMeasurem thread.
-* @param argument: Not used
-* @retval None
-*/
-
-/* USER CODE END Header_VoltageMeasurement_Task */
-void VoltageMeasurement_Task(void *argument)
-{
-  /* USER CODE BEGIN VoltageMeasurement_Task */
 	HAL_StatusTypeDef ret_val;
 
 
@@ -329,8 +302,23 @@ void VoltageMeasurement_Task(void *argument)
 				uint8_t reg = CH_STATUS;
 				ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
 				if (ret_val == HAL_OK) {
-					ret_val = HAL_I2C_Master_Receive_IT(&hi2c3, CHARGER_ADDRESS,
-							i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
+//					ret_val = HAL_I2C_Master_Receive_IT(&hi2c3, CHARGER_ADDRESS,
+//							i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
+					ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg,
+							sizeof(I2C_CH_BQ25895_Register), ch_i2c_master_timeout);
+					if(ret_val == HAL_OK) {
+						i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
+						uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
+						i2c_status_register_16bit->val.bat_voltage = batv;
+						uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
+						i2c_status_register_16bit->val.vbus_voltage = vbus_v;
+						uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
+						i2c_status_register_16bit->val.charge_current = ch_current;
+
+						// ok, contact has been established, we can use the values
+						i2c_status_register_8bit->val.charger_contact = true;
+					}
+
 				} else if (ret_val == HAL_ERROR) { // Master Transmit Address
 					// This should never happen because we just did a successful
 					// transmit a second ago. We have to ignore this and hope for
@@ -342,10 +330,11 @@ void VoltageMeasurement_Task(void *argument)
 				// it to come online.
 			}
 		}
-		osDelay(ch_update_interval);
+		handle_state();
+		osDelay(ups_update_interval);
 
 	}
-  /* USER CODE END VoltageMeasurement_Task */
+  /* USER CODE END StateMachine_Task */
 }
 
 /* USER CODE BEGIN Header_LED_Task */

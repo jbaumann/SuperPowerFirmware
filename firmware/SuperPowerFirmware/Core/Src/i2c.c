@@ -32,6 +32,7 @@
 #include "crc_8bit.h"
 #include "cmsis_os.h"
 #include "ch_bq25895.h"
+#include "ups_state.h"
 
 #include "DS3231.h"
 
@@ -446,6 +447,8 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		uint16_t AddrMatchCode) {
 
+	i2c_triggered_ups_state_change();
+
 	i2c_primary_address = (hi2c->Init.OwnAddress1 == AddrMatchCode);
 
 	if (i2c_primary_address) {
@@ -504,6 +507,8 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
  * has been successfully received. We copy the relevant
  * information and turn the listen mode back on
  */
+/*
+ * We now do a blocking call in the FreeRTOS task
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	if(hi2c == &hi2c3) {
 		i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
@@ -518,6 +523,7 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 		i2c_status_register_8bit->val.charger_contact = true;
 	}
 }
+ */
 
 
 /*

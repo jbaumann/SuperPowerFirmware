@@ -243,7 +243,7 @@ void restore_registers() {
 	uint32_t first_value;
 	first_value = rtc_read_backup_reg(0);
 	// check the version number first
-	if( (0xFF &first_value) == BACKUP_INIT_VALUE) {
+	if( (0xFF & first_value) == BACKUP_INIT_VALUE) {
 
 		config_registers.reg[0] = first_value;
 		for(int i = 1; i < (sizeof(Config_Registers) / 4); i++) {

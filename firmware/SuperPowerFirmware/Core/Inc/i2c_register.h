@@ -83,7 +83,6 @@ typedef union {
 		__IO uint16_t bat_voltage;
 		__IO uint16_t charge_current;
 		__IO uint16_t vbus_voltage;
-		__IO uint16_t ext_voltage;
 		__IO uint16_t seconds;
 		__IO uint16_t temperature;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
@@ -178,7 +177,6 @@ enum I2C_Register {
 	i2creg_bat_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.bat_voltage)/2,
 	i2creg_charge_current          = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.charge_current)/2,
 	i2creg_vbus_voltage            = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.vbus_voltage)/2,
-	i2creg_ext_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.ext_voltage)/2,
 	i2creg_seconds                 = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.seconds)/2,
 	i2creg_temperature             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.temperature)/2,
 	// I2C Special Registers

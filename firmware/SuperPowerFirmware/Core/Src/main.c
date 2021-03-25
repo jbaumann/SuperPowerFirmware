@@ -20,11 +20,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "adc.h"
 #include "dma.h"
 #include "i2c.h"
 #include "rtc.h"
-#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -87,6 +85,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -95,17 +94,18 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_RTC_Init();
-  MX_ADC1_Init();
-  MX_TIM5_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
-
+  // The RTC has to be initialized before we can read the registers
   restore_registers();
 
-  HAL_TIM_Base_Start_IT(&htim5);
-
-  // I2C Enable Listen will be turned on by the FreeRTos task reading the charger information
-  //HAL_I2C_EnableListen_IT(&hi2c1);
+  // TODO Verify that this works
+	if (hrtc.Init.AsynchPrediv != i2c_config_register_8bit->val.rtc_async_prediv
+		|| hrtc.Init.SynchPrediv != i2c_config_register_16bit->val.rtc_sync_prediv) {
+		hrtc.Init.AsynchPrediv = i2c_config_register_8bit->val.rtc_async_prediv;
+		hrtc.Init.SynchPrediv = i2c_config_register_16bit->val.rtc_sync_prediv;
+		MX_RTC_Init();
+	}
 
 #ifdef FREERTOS_TOTAL_RUNTIME_TIMER
   configureTimerForRunTimeStats();
@@ -205,10 +205,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM5) {
-		//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		//HAL_ADCEx_InjectedStart_IT(&hadc1);
-  }
   /* USER CODE END Callback 1 */
 }
 
