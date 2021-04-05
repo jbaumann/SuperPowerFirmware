@@ -10,6 +10,7 @@ import struct
 from typing import Tuple, Any
 from collections.abc import Mapping
 from pathlib import Path
+from configparser import ConfigParser
 
 class SuperPower:
 
@@ -20,12 +21,13 @@ class SuperPower:
     SHOULD_SHUTDOWN = 0x40
     CHARGER_STATUS = 0x41
     CHARGER_CONTACT = 0x42
+    UPS_STATE = 0x43
     TIMEOUT = 0x80
     RESTART_VOLTAGE = 0x81
     WARN_VOLTAGE = 0x82
     UPS_SHUTDOWN_VOLTAGE = 0x83
     RTC_SYNC_PREDIV = 0x84
-    BAT_VOLTAGE = 0xc0
+    UPS_BAT_VOLTAGE = 0xc0
     CHARGE_CURRENT = 0xc1
     VBUS_VOLTAGE = 0xc2
     SECONDS = 0xc3
@@ -226,7 +228,7 @@ class SuperPower:
                 if read[num_bytes] == self.calcCRC(register, read, num_bytes):
                     read.pop()
                     return read
-                logging.debug("Couldn't read data from register " +                               hex(register) + " correctly: " + hex(val))
+                logging.debug("Couldn't read data from register " +                               hex(register) + " correctly.")
             except Exception as e:
                 logging.debug("Couldn't read data from register " +                               hex(register) + ". Exception: " + str(e))
         logging.warning(
@@ -267,6 +269,9 @@ class SuperPower:
     def get_charger_contact(self):
         return self.get_8bit_value(self.CHARGER_CONTACT)
 
+    def get_ups_state(self):
+        return self.get_8bit_value(self.UPS_STATE)
+
     def get_timeout(self):
         return self.get_16bit_value(self.TIMEOUT)
 
@@ -297,8 +302,8 @@ class SuperPower:
     def set_rtc_sync_prediv(self, value):
         return self.set_16bit_value(self.RTC_SYNC_PREDIV, value)
 
-    def get_bat_voltage(self):
-        return self.get_16bit_value(self.BAT_VOLTAGE)
+    def get_ups_bat_voltage(self):
+        return self.get_16bit_value(self.UPS_BAT_VOLTAGE)
 
     def get_charge_current(self):
         return self.get_16bit_value(self.CHARGE_CURRENT)
@@ -317,3 +322,104 @@ class SuperPower:
 
     def task_receive_from_test(self, num_bytes):
         return self.receive_from_task(self.TEST, num_bytes)
+
+class SuperPowerConfig:
+    DAEMON_SECTION = "superpower"
+    SUPERPOWER = 'SUPERPOWER'
+    I2C_ADDRESS = 'i2c address'
+    LOG_LEVEL = 'loglevel'
+    BUTTON_FUNCTION = 'button function'
+
+    def __init__(self, cfgfile=None):
+        self.parser = ConfigParser(allow_no_value=True)
+        if cfgfile:
+            self.configfile_name = cfgfile
+        else:
+            self.configfile_name = str(Path(__file__).parent.absolute()) + "/superpower_daemon.cfg"
+
+        self.default_parser = ConfigParser(allow_no_value=True)
+        self.default_parser.read_dict(self.DEFAULT_CONFIG)
+        self.read_config()
+
+    def get(self, entry):
+        if entry in self.parser[self.DAEMON_SECTION]:
+            return self.parser[self.DAEMON_SECTION][entry]
+        else:
+            return self.default_parser[self.DAEMON_SECTION][entry]
+
+    def read_config(self):
+        if not os.path.isfile(self.configfile_name):
+            logging.info("No Config File. Trying to create one.")
+            self.parser.add_section(self.DAEMON_SECTION)
+        else:
+            try:
+                self.parser.read(self.configfile_name)
+                logging.debug("Config has been read")
+            except Exception:
+                logging.info("cannot read config file. Using default values")
+
+    def write_config(self):
+        try:
+            cfgfile = open(self.configfile_name, 'w')
+            self.parser.write(cfgfile)
+            cfgfile.close()
+        except Exception:
+            logging.warning("cannot write config file.")
+
+    def merge_and_sync_values(self, superpower):
+        changed_config = False
+        logging.debug("Merging")
+
+        default_daemon_config = self.default_parser[self.DAEMON_SECTION]
+        daemon_config = self.parser[self.DAEMON_SECTION]
+        for option in default_daemon_config:
+            if option not in daemon_config:
+                if default_daemon_config[option] == self.SUPERPOWER:
+                    # get data from superpower
+                    logging.debug("Fetching %s" % option)
+                    # create correct method name and call it
+                    method_name = "get_" + option.replace(" ", "_")
+                    method_ref = getattr(superpower, method_name)
+                    result = method_ref()
+                    daemon_config[option] = str(result)
+                else:
+                    daemon_config[option] = default_daemon_config[option]
+                    logging.debug("Set Config value %s : %s" % (option, daemon_config[option]))
+                changed_config = True
+            else:
+                if default_daemon_config[option] == self.SUPERPOWER:
+                    # get data from superpower
+                    logging.debug("Fetching %s" % option)
+                    # create correct method name and call it
+                    method_name = "get_" + option.replace(" ", "_")
+                    method_ref = getattr(superpower, method_name)
+                    result = method_ref()
+                    if result != int(daemon_config[option]):
+                        # send data to Superpower
+                        logging.debug("Set SuperPower value: %s" % option)
+                        # create correct method name and call it
+                        method_name = "set_" + option.replace(" ", "_")
+                        method_ref = getattr(superpower, method_name)
+                        result = method_ref(int(daemon_config[option]))
+
+        if changed_config:
+            logging.info("Writing new config file")
+            self.write_config()
+
+    DEFAULT_CONFIG = {
+        DAEMON_SECTION: {
+            I2C_ADDRESS: '0x40',
+            LOG_LEVEL: 'DEBUG',
+            BUTTON_FUNCTION: 'nothing',
+            'primed': '0',
+            'force shutdown': '0',
+            'enable bootloader': SUPERPOWER,
+            'rtc async prediv': SUPERPOWER,
+            'timeout': SUPERPOWER,
+            'restart voltage': SUPERPOWER,
+            'warn voltage': SUPERPOWER,
+            'ups shutdown voltage': SUPERPOWER,
+            'rtc sync prediv': SUPERPOWER,
+        }
+    }
+

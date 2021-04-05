@@ -24,8 +24,8 @@ special_config_regs = {
     "LOG_LEVEL": 'DEBUG',
     "BUTTON_FUNCTION": 'nothing',
 
-    "'primed'": 'False',
-    "'force shutdown'": 'False',
+    "'primed'": '0',
+    "'force shutdown'": '0',
 }
 
 
