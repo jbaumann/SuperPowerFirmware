@@ -25,6 +25,7 @@
 #include "rtc.h"
 #include "usart.h"
 #include "gpio.h"
+#include "ups_state.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -110,6 +111,8 @@ int main(void)
 #ifdef FREERTOS_TOTAL_RUNTIME_TIMER
   configureTimerForRunTimeStats();
 #endif
+
+  reset_timeout();
   HAL_I2C_EnableListen_IT(&hi2c1);
 
   /* USER CODE END 2 */

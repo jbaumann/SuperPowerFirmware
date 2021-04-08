@@ -8,7 +8,6 @@
 #include"main.h"
 #include "i2c_register.h"
 
-
 I2C_Config_Register_8Bit  *i2c_config_register_8bit = &(config_registers.val.i2c_config_register_8bit);
 I2C_Config_Register_16Bit *i2c_config_register_16bit = &(config_registers.val.i2c_config_register_16bit);
 I2C_Status_Register_8Bit  _status_register_8bit, *i2c_status_register_8bit = &_status_register_8bit;
@@ -38,10 +37,11 @@ I2C_Status_Register_8Bit _i2c_status_register_8bit = {
 	.val.charger_contact         =    0,   // if != 0 contact with the charger chip has been established
 	.val.should_shutdown         =    0,   // if != 0 contains the motivation for why the RPi should shutdown
 	.val.charger_status          =    0,   // contains the contents of the status register 0x0E
+	.val.ups_state               = ups_unclear_state,
 };
 
 I2C_Status_Register_16Bit _i2c_status_register_16bit = {
-	.val.bat_voltage             =    0,   // the battery voltage, 3.3 should be low and 3.7 high voltage
+	.val.ups_bat_voltage         =    0,   // the battery voltage, 3.3 should be low and 3.7 high voltage
 	.val.charge_current          =    0,   // the battery charge current
 	.val.vbus_voltage            =    0,   // the primary power voltage
 	.val.seconds                 =    0,   // seconds since last i2c access

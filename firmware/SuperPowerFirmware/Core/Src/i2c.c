@@ -436,7 +436,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 	if(register_number == i2creg_rtc_async_prediv || register_number == i2creg_rtc_sync_prediv) {
 		// TODO Check whether this enough or whether the RTC has to
 		// be de-initialized first
-		MX_RTC_Init();
+		//MX_RTC_Init();
 	}
 }
 

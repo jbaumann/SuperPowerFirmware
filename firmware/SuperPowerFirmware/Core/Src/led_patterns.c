@@ -88,7 +88,14 @@ LED_QueueMsg_t _blink_5 = {
 		.steps = &_blink_short,
 		.number_steps = NUM_STEPS(_blink_short),
 };
-LED_QueueMsg_t *blink_5 = &_blink_5;
+LED_QueueMsg_t *rpi_shuts_down = &_blink_5;
+
+LED_QueueMsg_t _blink_10 = {
+		.iterations = 10,
+		.steps = &_blink_short,
+		.number_steps = NUM_STEPS(_blink_short),
+};
+LED_QueueMsg_t *reboot_rpi = &_blink_10;
 
 LED_QueueMsg_t _background_off = {
 		.iterations = 0,

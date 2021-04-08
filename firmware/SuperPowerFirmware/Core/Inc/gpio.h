@@ -38,7 +38,9 @@ extern "C" {
 void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+void ups_off();
+void ups_on();
+void restart_raspberry();
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

@@ -21,7 +21,9 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "ups_state.h"
+#include "i2c_register.h"
+#include "cmsis_os.h"
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
@@ -81,6 +83,25 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		jumpToBootloader();
 	}
+}
+
+void ups_off() {
+	// set ups pin low
+}
+void ups_on() {
+	// set ups pin high
+}
+
+void restart_raspberry() {
+	const int switch_recovery_delay = 500; // TODO place this somewhere else
+
+	i2c_status_register_8bit->val.should_shutdown = shutdown_cause_none;
+
+	ups_off();
+
+	osDelay(switch_recovery_delay); // wait for the switch circuit to revover
+
+	ups_on();
 }
 /* USER CODE END 2 */
 

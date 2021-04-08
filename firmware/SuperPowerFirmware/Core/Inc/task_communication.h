@@ -111,7 +111,8 @@ typedef struct {
 
 } LED_QueueMsg_t;
 
-LED_QueueMsg_t *blink_5;
+LED_QueueMsg_t *rpi_shuts_down;
+LED_QueueMsg_t *reboot_rpi;
 LED_QueueMsg_t *background_off;
 LED_QueueMsg_t *blink_second_background;
 LED_QueueMsg_t *blink_SOS_3;
