@@ -32,7 +32,9 @@
 #include "task_communication.h"
 #include "gpio.h"
 
-uint32_t millis_last_contact = 0;
+uint32_t millis_last_contact      = 0;
+uint8_t ups_state_should_shutdown = 0;   // if != 0 contains the motivation for why the RPi should shutdown
+
 
 /*
  * Change the state dependent on the freshly read battery voltage
@@ -50,8 +52,7 @@ void voltage_dependent_state_change(uint16_t seconds_since_last_contact) {
 				<= i2c_config_register_16bit->val.warn_voltage) {
 			if (i2c_status_register_8bit->val.ups_state < ups_warn_state) {
 				i2c_status_register_8bit->val.ups_state = ups_warn_state;
-				i2c_status_register_8bit->val.should_shutdown |=
-						shutdown_cause_bat_voltage;
+				ups_state_should_shutdown |= shutdown_cause_bat_voltage;
 			}
 		} else if (i2c_status_register_16bit->val.ups_bat_voltage
 				<= i2c_config_register_16bit->val.restart_voltage) {
@@ -121,13 +122,13 @@ void act_on_state_change(uint16_t seconds_since_last_contact) {
 		}
 		reset_timeout();
 		i2c_status_register_8bit->val.ups_state = ups_running_state;
-		i2c_status_register_8bit->val.should_shutdown = shutdown_cause_none;
+		ups_state_should_shutdown = shutdown_cause_none;
 	} else if (i2c_status_register_8bit->val.ups_state == ups_warn_to_running) {
 		// we have recovered from a warn state and are now at a safe voltage
 		// we switch to State::running_state and let that state (below) handle
 		// the restart
 		i2c_status_register_8bit->val.ups_state = ups_running_state;
-		i2c_status_register_8bit->val.should_shutdown = shutdown_cause_none;
+		ups_state_should_shutdown = shutdown_cause_none;
 	} else if (i2c_status_register_8bit->val.ups_state == ups_unclear_state) {
 		// we do nothing and wait until either a timeout occurs, the voltage
 		// drops to warn_voltage or is higher than restart_voltage (see handle_state())
@@ -165,10 +166,8 @@ void handle_state() {
 	// already signalled that it is doing so
 	if (i2c_status_register_8bit->val.ups_state <= ups_warn_state) {
 		// we first check whether the Raspberry is already in the shutdown process
-		if (!(i2c_status_register_8bit->val.should_shutdown
-				& shutdown_cause_rpi_initiated)) {
-			if (i2c_status_register_8bit->val.should_shutdown
-					> shutdown_cause_rpi_initiated
+		if (!(ups_state_should_shutdown & shutdown_cause_rpi_initiated)) {
+			if (ups_state_should_shutdown > shutdown_cause_rpi_initiated
 					&& (seconds_since_last_contact
 							< i2c_config_register_16bit->val.timeout)) {
 				// RPi should take action, possibly shut down. Signal by blinking 5 times

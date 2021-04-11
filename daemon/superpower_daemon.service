@@ -1,0 +1,15 @@
+[Unit]
+Description=SuperPower UPS Daemon
+DefaultDependencies=no
+After=sysinit.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/opt/superpower_daemon/superpower_daemon.py
+Restart=always
+RestartSec=1
+User=pi
+
+[Install]
+WantedBy=sysinit.target

@@ -95,7 +95,7 @@ void ups_on() {
 void restart_raspberry() {
 	const int switch_recovery_delay = 500; // TODO place this somewhere else
 
-	i2c_status_register_8bit->val.should_shutdown = shutdown_cause_none;
+	ups_state_should_shutdown = shutdown_cause_none;
 
 	ups_off();
 

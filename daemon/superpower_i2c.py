@@ -18,10 +18,9 @@ class SuperPower:
     FORCE_SHUTDOWN = 0x01
     ENABLE_BOOTLOADER = 0x02
     RTC_ASYNC_PREDIV = 0x03
-    SHOULD_SHUTDOWN = 0x40
-    CHARGER_STATUS = 0x41
-    CHARGER_CONTACT = 0x42
-    UPS_STATE = 0x43
+    CHARGER_STATUS = 0x40
+    CHARGER_CONTACT = 0x41
+    UPS_STATE = 0x42
     TIMEOUT = 0x80
     RESTART_VOLTAGE = 0x81
     WARN_VOLTAGE = 0x82
@@ -33,8 +32,9 @@ class SuperPower:
     SECONDS = 0xc3
     TEMPERATURE = 0xc4
     VERSION = 0xe0
-    WRITE_TO_EEPROM = 0xe1
-    JUMP_TO_BOOTLOADER = 0xe2
+    SHOULD_SHUTDOWN = 0xe1
+    WRITE_TO_EEPROM = 0xe2
+    JUMP_TO_BOOTLOADER = 0xe3
     TEST = 0xf0
 
     _POLYNOME = 0x31
@@ -174,6 +174,11 @@ class SuperPower:
         logging.warning("Couldn't jump to bootloader after " +                         str(x) + " retries.")
         return False
 
+    def get_should_shutdown(self):
+        return self.get_8bit_value(self.SHOULD_SHUTDOWN)
+
+    def set_should_shutdown(self, value):
+        return self.set_8bit_value(self.SHOULD_SHUTDOWN, value)
 
     def get_uptime(self):
         for x in range(self._num_retries):
@@ -260,9 +265,6 @@ class SuperPower:
     def set_rtc_async_prediv(self, value):
         return self.set_8bit_value(self.RTC_ASYNC_PREDIV, value)
 
-    def get_should_shutdown(self):
-        return self.get_8bit_value(self.SHOULD_SHUTDOWN)
-
     def get_charger_status(self):
         return self.get_8bit_value(self.CHARGER_STATUS)
 
@@ -329,6 +331,8 @@ class SuperPowerConfig:
     I2C_ADDRESS = 'i2c address'
     LOG_LEVEL = 'loglevel'
     BUTTON_FUNCTION = 'button function'
+    SLEEPTIME = "sleep time"
+    PRIMED = "primed"
 
     def __init__(self, cfgfile=None):
         self.parser = ConfigParser(allow_no_value=True)
@@ -411,8 +415,10 @@ class SuperPowerConfig:
             I2C_ADDRESS: '0x40',
             LOG_LEVEL: 'DEBUG',
             BUTTON_FUNCTION: 'nothing',
-            'primed': '0',
+            SLEEPTIME: '20',
+            PRIMED: '0',
             'force shutdown': '0',
+            'primed': SUPERPOWER,
             'enable bootloader': SUPERPOWER,
             'rtc async prediv': SUPERPOWER,
             'timeout': SUPERPOWER,

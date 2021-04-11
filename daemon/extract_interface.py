@@ -23,8 +23,9 @@ special_config_regs = {
     "I2C_ADDRESS": '0x40',
     "LOG_LEVEL": 'DEBUG',
     "BUTTON_FUNCTION": 'nothing',
+    "SLEEPTIME": '20',
 
-    "'primed'": '0',
+    "PRIMED": '0',
     "'force shutdown'": '0',
 }
 
@@ -367,6 +368,11 @@ class_functions = """
                         str(x) + " retries.")
         return False
 
+    def get_should_shutdown(self):
+        return self.get_8bit_value(self.SHOULD_SHUTDOWN)
+
+    def set_should_shutdown(self, value):
+        return self.set_8bit_value(self.SHOULD_SHUTDOWN, value)
 
     def get_uptime(self):
         for x in range(self._num_retries):
@@ -456,6 +462,8 @@ class SuperPowerConfig:
     I2C_ADDRESS = 'i2c address'
     LOG_LEVEL = 'loglevel'
     BUTTON_FUNCTION = 'button function'
+    SLEEPTIME = "sleep time"
+    PRIMED = "primed"
 
     def __init__(self, cfgfile=None):
         self.parser = ConfigParser(allow_no_value=True)

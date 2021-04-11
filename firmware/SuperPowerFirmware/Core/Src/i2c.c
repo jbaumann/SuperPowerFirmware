@@ -348,6 +348,10 @@ uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tda
 		case i2creg_write_to_eeprom:
 			len = 1;  // 1 byte
 			break;
+		case i2creg_should_shutdown:
+			len = 1; // 1 byte
+			tdata[0] = ups_state_should_shutdown;
+			break;
 		default:
 			break;
 		}
@@ -404,11 +408,23 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 
 	} else if (register_number < (enum I2C_Register)TASK_COMMUNICATION) {
 		/* access to the SPECIAL_16BIT struct */
-		if(register_number == i2creg_jump_to_bootloader) {
+		switch (register_number) {
+		case i2creg_jump_to_bootloader:
 			if(i2c_config_register_8bit->val.enable_bootloader != 0) {
 				// we are jumping into the bootloader
 				jumpToBootloader();
 			}
+			break;
+		case i2creg_should_shutdown:
+			// TODO Sync this with UPS State
+			if(data[0] == 0) {
+				ups_state_should_shutdown = 0;
+			} else {
+				ups_state_should_shutdown |= data[0];
+			}
+			break;
+		default:
+			break;
 		}
 
 
