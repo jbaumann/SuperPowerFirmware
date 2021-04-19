@@ -8,7 +8,6 @@
 #ifndef INC_UPS_STATE_H_
 #define INC_UPS_STATE_H_
 
-extern uint32_t seconds_since_last_contact;
 static const uint16_t ups_update_interval    = 10000;  // update interval for the charger in milliseconds
 
 #define bit(b) (1UL << (b))

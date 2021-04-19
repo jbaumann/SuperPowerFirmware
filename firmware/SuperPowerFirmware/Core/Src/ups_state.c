@@ -156,7 +156,9 @@ void act_on_state_change(uint16_t seconds_since_last_contact) {
 
 void handle_state() {
 	uint16_t seconds_since_last_contact = (HAL_GetTick() - millis_last_contact)
-			/ HAL_GetTickFreq();
+			/ 1000;
+
+	i2c_status_register_16bit->val.seconds = seconds_since_last_contact;
 
 	// change the state depending on the current battery voltage
 	voltage_dependent_state_change(seconds_since_last_contact);

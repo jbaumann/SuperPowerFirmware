@@ -107,7 +107,7 @@ void MX_I2C3_Init(void)
 {
 
   hi2c3.Instance = I2C3;
-  hi2c3.Init.ClockSpeed = 100000;
+  hi2c3.Init.ClockSpeed = 400000;
   hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c3.Init.OwnAddress1 = 0;
   hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -336,7 +336,6 @@ uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tda
 		}
 	} else if (register_number < (enum I2C_Register) TASK_COMMUNICATION) {
 		/* access to the SPECIAL_16BIT struct */
-		osMessageQueuePut(LED_R_QueueHandle, &blink_SOS_3, 0, 0);
 
 		switch (register_number) {
 		case i2creg_version:

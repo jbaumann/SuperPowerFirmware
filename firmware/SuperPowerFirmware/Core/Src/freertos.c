@@ -34,8 +34,8 @@
 #include "rtc.h"
 #include "task_communication.h"
 #include "ups_state.h"
-
-// JB TODO move to external impl.
+#include "ssd1306.h"
+#include "fonts.h"
 #include "rtc.h"
 /* USER CODE END Includes */
 
@@ -56,6 +56,19 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+uint8_t registers[10];
+void get_charger_registers() {
+	HAL_StatusTypeDef ret_val;
+	uint8_t reg = 0;
+	ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1,
+			ch_i2c_master_timeout);
+	if (ret_val == HAL_OK) {
+		ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, registers,
+				sizeof(registers), ch_i2c_master_timeout);
+	}
+}
+
+
 
 /* USER CODE END Variables */
 /* Definitions for I2C */
@@ -271,6 +284,8 @@ void RTC_Task(void *argument)
 }
 
 /* USER CODE BEGIN Header_StateMachine_Task */
+
+
 /**
 * @brief Function implementing the StateMachine thread.
 * @param argument: Not used
@@ -284,17 +299,37 @@ void StateMachine_Task(void *argument)
 
 	HAL_StatusTypeDef ret_val;
 
+	get_charger_registers();
 
-	// on first execution
+ 	// on first execution
 	ret_val = ch_init(&hi2c3);
+
+
+	SSD1306_Init(&hi2c3);
+
+	int cx = 0;
+	int bat_y = 0;
+	int vbus_y = 0;
+	int state_y = 2*19;
+	int should_shutdown_y = 3*19;
+	int seconds_y = 4*19;
+
+	SSD1306_GotoXY(cx, 1*19);
+	SSD1306_Puts("State", &Font_11x18, SSD1306_COLOR_WHITE);
+
+	SSD1306_UpdateScreen();
 
 	/* Infinite loop */
 	for (;;) {
 
 		if (hi2c3.State == HAL_I2C_STATE_READY) {
+			get_charger_registers();
+
 			// start ADC conversion
 			ret_val = ch_transfer_byte_to_register(&hi2c3, CH_CONV_ADC,
 					CH_CONV_ADC_START);
+
+			get_charger_registers();
 
 			if (ret_val == HAL_OK) {
 				osDelay(ch_conv_delay); // time for conversion, see 8.2.8 Battery Monitor on p.24
@@ -320,6 +355,7 @@ void StateMachine_Task(void *argument)
 						i2c_status_register_8bit->val.charger_contact = true;
 					}
 
+					get_charger_registers();
 				} else if (ret_val == HAL_ERROR) { // Master Transmit Address
 					// This should never happen because we just did a successful
 					// transmit a second ago. We have to ignore this and hope for
@@ -332,7 +368,39 @@ void StateMachine_Task(void *argument)
 			}
 		}
 		handle_state();
-		osDelay(ups_update_interval);
+		if(i2c_status_register_8bit->val.charger_contact) {
+			char buffer[6];
+
+			sprintf(buffer, "%4d", i2c_status_register_16bit->val.ups_bat_voltage);
+			SSD1306_GotoXY(cx, bat_y);
+			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			SSD1306_GotoXY(44, vbus_y);
+			if(i2c_status_register_8bit->val.charger_status & 0x4) {
+				SSD1306_Putc('+', &Font_11x18, SSD1306_COLOR_WHITE);
+			} else {
+				SSD1306_Putc('-', &Font_11x18, SSD1306_COLOR_WHITE);
+			}
+
+			sprintf(buffer, "0x%02x", i2c_status_register_8bit->val.ups_state);
+			SSD1306_GotoXY(cx, state_y);
+			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			sprintf(buffer, "0x%02x", ups_state_should_shutdown);
+			SSD1306_GotoXY(cx, should_shutdown_y);
+			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			uint16_t secs = i2c_status_register_16bit->val.seconds;
+			if(secs > 9999) {
+				secs -= 10000;
+			}
+			sprintf(buffer, "%05d", secs);
+			SSD1306_GotoXY(cx, seconds_y);
+			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			SSD1306_UpdateScreen();
+		}
+		//osDelay(ups_update_interval);
 
 	}
   /* USER CODE END StateMachine_Task */
