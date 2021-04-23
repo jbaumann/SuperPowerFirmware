@@ -75,36 +75,36 @@ void get_charger_registers() {
 osThreadId_t I2CHandle;
 const osThreadAttr_t I2C_attributes = {
   .name = "I2C",
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 2048 * 4
 };
 /* Definitions for RTC */
 osThreadId_t RTCHandle;
 const osThreadAttr_t RTC_attributes = {
   .name = "RTC",
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 2048 * 4
 };
 /* Definitions for StateMachine */
 osThreadId_t StateMachineHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 2048 * 4
 };
 /* Definitions for LED */
 osThreadId_t LEDHandle;
 const osThreadAttr_t LED_attributes = {
   .name = "LED",
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 2048 * 4
 };
 /* Definitions for Test */
 osThreadId_t TestHandle;
 const osThreadAttr_t Test_attributes = {
   .name = "Test",
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 1024 * 4
 };
 /* Definitions for I2C_R_Queue */
 osMessageQueueId_t I2C_R_QueueHandle;
@@ -310,14 +310,9 @@ void StateMachine_Task(void *argument)
 	int cx = 0;
 	int bat_y = 0;
 	int vbus_y = 0;
-	int state_y = 2*19;
-	int should_shutdown_y = 3*19;
-	int seconds_y = 4*19;
-
-	SSD1306_GotoXY(cx, 1*19);
-	SSD1306_Puts("State", &Font_11x18, SSD1306_COLOR_WHITE);
-
-	SSD1306_UpdateScreen();
+	int state_y = 1*19;
+	int should_shutdown_y = 2*19;
+	int seconds_y = 3*19;
 
 	/* Infinite loop */
 	for (;;) {

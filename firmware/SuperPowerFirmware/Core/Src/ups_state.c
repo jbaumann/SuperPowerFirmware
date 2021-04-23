@@ -33,7 +33,7 @@
 #include "gpio.h"
 
 uint32_t millis_last_contact      = 0;
-uint8_t ups_state_should_shutdown = 0;   // if != 0 contains the motivation for why the RPi should shutdown
+uint8_t ups_state_should_shutdown = shutdown_cause_none;
 
 
 /*
@@ -141,15 +141,21 @@ void act_on_state_change(uint16_t seconds_since_last_contact) {
 				> i2c_config_register_16bit->val.timeout;
 
 		if (should_restart) {
-			if (i2c_config_register_8bit->val.primed == 1) {
-				// RPi has not accessed the I2C interface for more than timeout seconds.
+			if (i2c_config_register_8bit->val.primed > 0) {
+				// RPi has not accessed the I2C interface for more than timeout seconds
+				// or the button has beend pressed (primed == 2).
 				// We restart it. Signal restart by blinking ten times
 				osMessageQueuePut(LED_R_QueueHandle, &reboot_rpi, 0, 0);
 
 				restart_raspberry();
-			}
 
-			reset_timeout();
+				// Primed has been set by the button press, we use the restart time
+				// for debouncing
+				if(i2c_config_register_8bit->val.primed == 2) {
+					i2c_config_register_8bit->val.primed = 0;
+				}
+				reset_timeout();
+			}
 		}
 	}
 }

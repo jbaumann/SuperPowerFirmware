@@ -196,8 +196,8 @@ uint8_t SSD1306_Init(I2C_HandleTypeDef *hi2c) {
 	SSD1306_WRITECOMMAND(0xD3); //-set display offset
 	SSD1306_WRITECOMMAND(0x20); //-not offset
 	SSD1306_WRITECOMMAND(0xD5); //--set display clock divide ratio/oscillator frequency
-	SSD1306_WRITECOMMAND(0xF0); //--set divide ratio
-	SSD1306_WRITECOMMAND(0x51); //--set divide ratio
+//	SSD1306_WRITECOMMAND(0xF0); //--set divide ratio
+	SSD1306_WRITECOMMAND(0x80); //--set divide ratio
 	SSD1306_WRITECOMMAND(0xD9); //--set pre-charge period
 	SSD1306_WRITECOMMAND(0x22); //
 	SSD1306_WRITECOMMAND(0xDA); //--set com pins hardware configuration

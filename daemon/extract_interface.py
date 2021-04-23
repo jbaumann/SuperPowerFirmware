@@ -25,8 +25,8 @@ special_config_regs = {
     "BUTTON_FUNCTION": 'nothing',
     "SLEEPTIME": '20',
 
-    "PRIMED": '0',
-    "'force shutdown'": '0',
+    #    "PRIMED": '0',
+    #    "'force shutdown'": '0',
 }
 
 

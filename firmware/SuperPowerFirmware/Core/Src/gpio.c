@@ -24,12 +24,14 @@
 #include "ups_state.h"
 #include "i2c_register.h"
 #include "cmsis_os.h"
+
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
 /* Configure GPIO                                                             */
 /*----------------------------------------------------------------------------*/
 /* USER CODE BEGIN 1 */
+const int switch_recovery_delay = 500; // TODO place this somewhere else
 
 /* USER CODE END 1 */
 
@@ -52,6 +54,9 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(nOP_Enable_GPIO_Port, nOP_Enable_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PtPin */
@@ -61,11 +66,24 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = nOP_Enable_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(nOP_Enable_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = User_Button_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(User_Button_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
@@ -75,25 +93,44 @@ void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 2 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	/*
-	 * TODO Change the pin to the one Seth defined
-	 * TODO add protection using an I2C register
-	 */
-	if(GPIO_Pin == B1_Pin) {
-		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		jumpToBootloader();
+	// This is either the blue button on the Nucleo board
+	// or the GPIO5/pin 29 on the RPi
+	if (GPIO_Pin == B1_Pin) {
+		// TODO remove?
+		if (i2c_config_register_8bit->val.enable_bootloader != 0) {
+			jumpToBootloader();
+		}
+		else {
+			// Raspberry signals shutdown?
+		}
+	}
+	// The user button can be pressed to restart the RPi if turned off
+	// or to signal an action if it is running
+	if (GPIO_Pin == User_Button_Pin) {
+		uint8_t should_restart = i2c_status_register_16bit->val.seconds
+				> i2c_config_register_16bit->val.timeout;
+
+		if (should_restart && i2c_config_register_8bit->val.primed == 0) {
+			i2c_config_register_8bit->val.primed = 2;
+			// could be set during the shutdown while the timeout has not yet been exceeded. We reset it.
+			ups_state_should_shutdown = shutdown_cause_none;
+		} else {
+			// signal the Raspberry that the button has been pressed.
+			ups_state_should_shutdown |= shutdown_cause_button;
+		}
 	}
 }
 
 void ups_off() {
 	// set ups pin low
+	HAL_GPIO_WritePin(nOP_Enable_GPIO_Port, nOP_Enable_Pin, GPIO_PIN_RESET);
 }
 void ups_on() {
 	// set ups pin high
+	HAL_GPIO_WritePin(nOP_Enable_GPIO_Port, nOP_Enable_Pin, GPIO_PIN_SET);
 }
 
 void restart_raspberry() {
-	const int switch_recovery_delay = 500; // TODO place this somewhere else
 
 	ups_state_should_shutdown = shutdown_cause_none;
 
