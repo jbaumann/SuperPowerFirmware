@@ -17,7 +17,8 @@ class SuperPower:
     PRIMED = 0x00
     FORCE_SHUTDOWN = 0x01
     ENABLE_BOOTLOADER = 0x02
-    RTC_ASYNC_PREDIV = 0x03
+    USER_BUTTON_RESTART = 0x03
+    RTC_ASYNC_PREDIV = 0x04
     CHARGER_STATUS = 0x40
     CHARGER_CONTACT = 0x41
     UPS_STATE = 0x42
@@ -259,6 +260,12 @@ class SuperPower:
     def set_enable_bootloader(self, value):
         return self.set_8bit_value(self.ENABLE_BOOTLOADER, value)
 
+    def get_user_button_restart(self):
+        return self.get_8bit_value(self.USER_BUTTON_RESTART)
+
+    def set_user_button_restart(self, value):
+        return self.set_8bit_value(self.USER_BUTTON_RESTART, value)
+
     def get_rtc_async_prediv(self):
         return self.get_8bit_value(self.RTC_ASYNC_PREDIV)
 
@@ -419,6 +426,7 @@ class SuperPowerConfig:
             'primed': SUPERPOWER,
             'force shutdown': SUPERPOWER,
             'enable bootloader': SUPERPOWER,
+            'user button restart': SUPERPOWER,
             'rtc async prediv': SUPERPOWER,
             'timeout': SUPERPOWER,
             'restart voltage': SUPERPOWER,
