@@ -31,7 +31,9 @@
 /* Configure GPIO                                                             */
 /*----------------------------------------------------------------------------*/
 /* USER CODE BEGIN 1 */
-const int switch_recovery_delay = 500; // TODO place this somewhere else
+
+// The time that is need to guarantee that the RPi is powered down
+const int switch_recovery_delay = 500;
 
 /* USER CODE END 1 */
 
@@ -96,7 +98,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	// This is either the blue button on the Nucleo board
 	// or the GPIO5/pin 29 on the RPi
 	if (GPIO_Pin == B1_Pin) {
-		// TODO remove?
+		// TODO Bootloader on button press remove?
 		if (i2c_config_register_8bit->val.enable_bootloader != 0) {
 			jumpToBootloader();
 		}

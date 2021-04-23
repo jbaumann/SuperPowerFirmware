@@ -15,7 +15,6 @@ I2C_Status_Register_16Bit _status_register_16_bit, *i2c_status_register_16bit = 
 
 /*
  * Initialization of the register structures
- * TODO find a more elegant way for the initialization
  */
 
 

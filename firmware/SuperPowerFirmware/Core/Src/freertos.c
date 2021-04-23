@@ -395,6 +395,7 @@ void StateMachine_Task(void *argument)
 
 			SSD1306_UpdateScreen();
 		}
+		// TODO Remove comment
 		//osDelay(ups_update_interval);
 
 	}

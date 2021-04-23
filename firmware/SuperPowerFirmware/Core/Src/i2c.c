@@ -435,7 +435,6 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 			}
 			break;
 		case i2creg_should_shutdown:
-			// TODO Sync this with UPS State
 			if(data[0] == 0) {
 				ups_state_should_shutdown = 0;
 			} else {
@@ -469,7 +468,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 	}
 	// check for RTC register change and trigger re-init
 	if(register_number == i2creg_rtc_async_prediv || register_number == i2creg_rtc_sync_prediv) {
-		// TODO Check whether this enough or whether the RTC has to
+		// TODO RTC Check whether this enough or whether the RTC has to
 		// be de-initialized first
 		//MX_RTC_Init();
 	}

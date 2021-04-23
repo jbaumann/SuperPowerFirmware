@@ -99,7 +99,7 @@ int main(void)
   // The RTC has to be initialized before we can read the registers
   restore_registers();
 
-  // TODO Verify that this works
+  // TODO RTC Verify that this works
 	if (hrtc.Init.AsynchPrediv != i2c_config_register_8bit->val.rtc_async_prediv
 		|| hrtc.Init.SynchPrediv != i2c_config_register_16bit->val.rtc_sync_prediv) {
 		hrtc.Init.AsynchPrediv = i2c_config_register_8bit->val.rtc_async_prediv;

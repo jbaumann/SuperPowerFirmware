@@ -150,7 +150,7 @@ uint8_t rtc_get_RTC_register(uint8_t reg, uint8_t tdata[]){
 
 void rtc_msg_decode(uint8_t cmd_size, uint8_t data[]){
 
-	// TODO Refactor
+	// TODO RTC Refactor
 
 	uint8_t aux = cmd_size;
 	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);

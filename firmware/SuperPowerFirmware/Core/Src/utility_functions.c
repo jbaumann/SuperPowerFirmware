@@ -14,7 +14,6 @@
  * Programmatically jump into the bootloader to accept a new firmware
  * Version for the STM32F411
  * Taken from https://stm32f4-discovery.net/2017/04/tutorial-jump-system-memory-software-stm32/
- * TODO Check whether this works with the STM32F412 as well
  */
 void jumpToBootloader() {
 	void (*sysMemBootJump)(void);
