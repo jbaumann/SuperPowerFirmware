@@ -109,6 +109,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if (GPIO_Pin == User_Button_Pin) {
 		uint8_t should_restart = i2c_status_register_16bit->val.seconds
 				> i2c_config_register_16bit->val.timeout;
+		should_restart = should_restart && i2c_config_register_8bit->val.user_button_restart;
 
 		if (should_restart && i2c_config_register_8bit->val.primed == 0) {
 			i2c_config_register_8bit->val.primed = 2;

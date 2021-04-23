@@ -55,6 +55,7 @@ typedef union {
 		__IO uint8_t primed;
 		__IO uint8_t force_shutdown;
 		__IO uint8_t enable_bootloader;
+		__IO uint8_t user_button_restart;
 		__IO uint8_t rtc_async_prediv;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint8_t reg[sizeof(struct _I2C_Config_Register_8Bit)];
@@ -167,6 +168,7 @@ enum I2C_Register {
 	i2creg_primed                  = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.primed),
 	i2creg_force_shutdown          = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.force_shutdown),
 	i2creg_enable_bootloader       = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.enable_bootloader),
+	i2creg_user_button_restart     = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.user_button_restart),
 	i2creg_rtc_async_prediv        = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.rtc_async_prediv),
 	// I2C_Status_Register_8Bit
 	i2creg_charger_status          = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.charger_status),
