@@ -2,3 +2,5 @@
 /.pio/
 /.vscode/
 /lib/
+/Drivers/
+/Middlewares/

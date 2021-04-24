@@ -8,8 +8,13 @@
 #ifndef INC_UPS_STATE_H_
 #define INC_UPS_STATE_H_
 
+static const uint16_t ups_update_interval    = 10000;  // update interval for the charger in milliseconds
+
 #define bit(b) (1UL << (b))
 
+void i2c_triggered_ups_state_change();
+void handle_state() ;
+void reset_timeout();
 /*
    Values modelling the different states the system can be in
 */
@@ -35,5 +40,7 @@ enum Shutdown_Cause {
   shutdown_cause_reserved_6    = bit(6),
   shutdown_cause_bat_voltage   = bit(7),
 };
+
+extern uint8_t ups_state_should_shutdown;
 
 #endif /* INC_UPS_STATE_H_ */

@@ -10,26 +10,32 @@ import struct
 from typing import Tuple, Any
 from collections.abc import Mapping
 from pathlib import Path
+from configparser import ConfigParser
 
 class SuperPower:
 
     PRIMED = 0x00
     FORCE_SHUTDOWN = 0x01
     ENABLE_BOOTLOADER = 0x02
-    SHOULD_SHUTDOWN = 0x40
-    CHARGER_STATUS = 0x41
+    USER_BUTTON_RESTART = 0x03
+    RTC_ASYNC_PREDIV = 0x04
+    CHARGER_STATUS = 0x40
+    CHARGER_CONTACT = 0x41
+    UPS_STATE = 0x42
     TIMEOUT = 0x80
     RESTART_VOLTAGE = 0x81
     WARN_VOLTAGE = 0x82
     UPS_SHUTDOWN_VOLTAGE = 0x83
-    BAT_VOLTAGE = 0xc0
+    RTC_SYNC_PREDIV = 0x84
+    UPS_BAT_VOLTAGE = 0xc0
     CHARGE_CURRENT = 0xc1
     VBUS_VOLTAGE = 0xc2
-    EXT_VOLTAGE = 0xc3
-    SECONDS = 0xc4
-    TEMPERATURE = 0xc5
+    SECONDS = 0xc3
+    TEMPERATURE = 0xc4
     VERSION = 0xe0
-    WRITE_TO_EEPROM = 0xe1
+    SHOULD_SHUTDOWN = 0xe1
+    WRITE_TO_EEPROM = 0xe2
+    JUMP_TO_BOOTLOADER = 0xe3
     TEST = 0xf0
 
     _POLYNOME = 0x31
@@ -149,6 +155,32 @@ class SuperPower:
             "Couldn't read version information after " + str(x) + " retries.")
         return (0xFFFF, 0xFFFF, 0xFFFF)
 
+    def jump_to_bootloader(self):
+        register = self.JUMP_TO_BOOTLOADER
+        value = 1
+
+        crc = self.addCrc(0, register)
+        crc = self.addCrc(crc, value)
+
+        arg_list = [value, crc]
+        for x in range(self._num_retries):
+            bus = smbus.SMBus(self._bus_number)
+            time.sleep(self._time_const)
+            try:
+                bus.write_i2c_block_data(self._address, register, arg_list)
+                bus.close()
+                return True
+            except Exception as e:
+                logging.debug("Couldn't jump to bootloader " +                               hex(register) + ". Exception: " + str(e))
+        logging.warning("Couldn't jump to bootloader after " +                         str(x) + " retries.")
+        return False
+
+    def get_should_shutdown(self):
+        return self.get_8bit_value(self.SHOULD_SHUTDOWN)
+
+    def set_should_shutdown(self, value):
+        return self.set_8bit_value(self.SHOULD_SHUTDOWN, value)
+
     def get_uptime(self):
         for x in range(self._num_retries):
             bus = smbus.SMBus(self._bus_number)
@@ -202,7 +234,7 @@ class SuperPower:
                 if read[num_bytes] == self.calcCRC(register, read, num_bytes):
                     read.pop()
                     return read
-                logging.debug("Couldn't read data from register " +                               hex(register) + " correctly: " + hex(val))
+                logging.debug("Couldn't read data from register " +                               hex(register) + " correctly.")
             except Exception as e:
                 logging.debug("Couldn't read data from register " +                               hex(register) + ". Exception: " + str(e))
         logging.warning(
@@ -228,11 +260,26 @@ class SuperPower:
     def set_enable_bootloader(self, value):
         return self.set_8bit_value(self.ENABLE_BOOTLOADER, value)
 
-    def get_should_shutdown(self):
-        return self.get_8bit_value(self.SHOULD_SHUTDOWN)
+    def get_user_button_restart(self):
+        return self.get_8bit_value(self.USER_BUTTON_RESTART)
+
+    def set_user_button_restart(self, value):
+        return self.set_8bit_value(self.USER_BUTTON_RESTART, value)
+
+    def get_rtc_async_prediv(self):
+        return self.get_8bit_value(self.RTC_ASYNC_PREDIV)
+
+    def set_rtc_async_prediv(self, value):
+        return self.set_8bit_value(self.RTC_ASYNC_PREDIV, value)
 
     def get_charger_status(self):
         return self.get_8bit_value(self.CHARGER_STATUS)
+
+    def get_charger_contact(self):
+        return self.get_8bit_value(self.CHARGER_CONTACT)
+
+    def get_ups_state(self):
+        return self.get_8bit_value(self.UPS_STATE)
 
     def get_timeout(self):
         return self.get_16bit_value(self.TIMEOUT)
@@ -258,17 +305,20 @@ class SuperPower:
     def set_ups_shutdown_voltage(self, value):
         return self.set_16bit_value(self.UPS_SHUTDOWN_VOLTAGE, value)
 
-    def get_bat_voltage(self):
-        return self.get_16bit_value(self.BAT_VOLTAGE)
+    def get_rtc_sync_prediv(self):
+        return self.get_16bit_value(self.RTC_SYNC_PREDIV)
+
+    def set_rtc_sync_prediv(self, value):
+        return self.set_16bit_value(self.RTC_SYNC_PREDIV, value)
+
+    def get_ups_bat_voltage(self):
+        return self.get_16bit_value(self.UPS_BAT_VOLTAGE)
 
     def get_charge_current(self):
         return self.get_16bit_value(self.CHARGE_CURRENT)
 
     def get_vbus_voltage(self):
         return self.get_16bit_value(self.VBUS_VOLTAGE)
-
-    def get_ext_voltage(self):
-        return self.get_16bit_value(self.EXT_VOLTAGE)
 
     def get_seconds(self):
         return self.get_16bit_value(self.SECONDS)
@@ -281,3 +331,108 @@ class SuperPower:
 
     def task_receive_from_test(self, num_bytes):
         return self.receive_from_task(self.TEST, num_bytes)
+
+class SuperPowerConfig:
+    DAEMON_SECTION = "superpower"
+    SUPERPOWER = 'SUPERPOWER'
+    I2C_ADDRESS = 'i2c address'
+    LOG_LEVEL = 'loglevel'
+    BUTTON_FUNCTION = 'button function'
+    SLEEPTIME = "sleep time"
+    PRIMED = "primed"
+
+    def __init__(self, cfgfile=None):
+        self.parser = ConfigParser(allow_no_value=True)
+        if cfgfile:
+            self.configfile_name = cfgfile
+        else:
+            self.configfile_name = str(Path(__file__).parent.absolute()) + "/superpower_daemon.cfg"
+
+        self.default_parser = ConfigParser(allow_no_value=True)
+        self.default_parser.read_dict(self.DEFAULT_CONFIG)
+        self.read_config()
+
+    def get(self, entry):
+        if entry in self.parser[self.DAEMON_SECTION]:
+            return self.parser[self.DAEMON_SECTION][entry]
+        else:
+            return self.default_parser[self.DAEMON_SECTION][entry]
+
+    def read_config(self):
+        if not os.path.isfile(self.configfile_name):
+            logging.info("No Config File. Trying to create one.")
+            self.parser.add_section(self.DAEMON_SECTION)
+        else:
+            try:
+                self.parser.read(self.configfile_name)
+                logging.debug("Config has been read")
+            except Exception:
+                logging.info("cannot read config file. Using default values")
+
+    def write_config(self):
+        try:
+            cfgfile = open(self.configfile_name, 'w')
+            self.parser.write(cfgfile)
+            cfgfile.close()
+        except Exception:
+            logging.warning("cannot write config file.")
+
+    def merge_and_sync_values(self, superpower):
+        changed_config = False
+        logging.debug("Merging")
+
+        default_daemon_config = self.default_parser[self.DAEMON_SECTION]
+        daemon_config = self.parser[self.DAEMON_SECTION]
+        for option in default_daemon_config:
+            if option not in daemon_config:
+                if default_daemon_config[option] == self.SUPERPOWER:
+                    # get data from superpower
+                    logging.debug("Fetching %s" % option)
+                    # create correct method name and call it
+                    method_name = "get_" + option.replace(" ", "_")
+                    method_ref = getattr(superpower, method_name)
+                    result = method_ref()
+                    daemon_config[option] = str(result)
+                else:
+                    daemon_config[option] = default_daemon_config[option]
+                    logging.debug("Set Config value %s : %s" % (option, daemon_config[option]))
+                changed_config = True
+            else:
+                if default_daemon_config[option] == self.SUPERPOWER:
+                    # get data from superpower
+                    logging.debug("Fetching %s" % option)
+                    # create correct method name and call it
+                    method_name = "get_" + option.replace(" ", "_")
+                    method_ref = getattr(superpower, method_name)
+                    result = method_ref()
+                    if result != int(daemon_config[option]):
+                        # send data to Superpower
+                        logging.debug("Set SuperPower value: %s" % option)
+                        # create correct method name and call it
+                        method_name = "set_" + option.replace(" ", "_")
+                        method_ref = getattr(superpower, method_name)
+                        result = method_ref(int(daemon_config[option]))
+
+        if changed_config:
+            logging.info("Writing new config file")
+            self.write_config()
+
+    DEFAULT_CONFIG = {
+        DAEMON_SECTION: {
+            I2C_ADDRESS: '0x40',
+            LOG_LEVEL: 'DEBUG',
+            BUTTON_FUNCTION: 'nothing',
+            SLEEPTIME: '20',
+            'primed': SUPERPOWER,
+            'force shutdown': SUPERPOWER,
+            'enable bootloader': SUPERPOWER,
+            'user button restart': SUPERPOWER,
+            'rtc async prediv': SUPERPOWER,
+            'timeout': SUPERPOWER,
+            'restart voltage': SUPERPOWER,
+            'warn voltage': SUPERPOWER,
+            'ups shutdown voltage': SUPERPOWER,
+            'rtc sync prediv': SUPERPOWER,
+        }
+    }
+

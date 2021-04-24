@@ -25,8 +25,6 @@
 
 RTC_TimeTypeDef time;
 RTC_DateTypeDef date;
-char timebuffer[] = {0,0,0,0,0,0,0,0,0,0,0}; // is the initialization necessary?
-//uint16_t addr = 0;
 
 /* USER CODE END 0 */
 
@@ -35,15 +33,23 @@ RTC_HandleTypeDef hrtc;
 /* RTC init function */
 void MX_RTC_Init(void)
 {
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
   RTC_TimeTypeDef sTime = {0};
   RTC_DateTypeDef sDate = {0};
 
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
   /** Initialize RTC Only
   */
   hrtc.Instance = RTC;
   hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-  hrtc.Init.AsynchPrediv = 127;
-  hrtc.Init.SynchPrediv = 250;
+  hrtc.Init.AsynchPrediv = 0x1F;
+  hrtc.Init.SynchPrediv = 249;
   hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
   hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
@@ -53,6 +59,11 @@ void MX_RTC_Init(void)
   }
 
   /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /*
+   * The values for AsyncHPrediv and SynchPrediv have been taken from
+   * https://stm32f4-discovery.net/2014/07/library-19-use-internal-rtc-on-stm32f4xx-devices/
+   */
 
   /* USER CODE END Check_RTC_BKUP */
 
@@ -76,12 +87,9 @@ void MX_RTC_Init(void)
   {
     Error_Handler();
   }
-  /** Enable Calibrartion
-  */
-  if (HAL_RTCEx_SetCalibrationOutPut(&hrtc, RTC_CALIBOUTPUT_512HZ) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 
 }
 
@@ -141,7 +149,7 @@ uint8_t rtc_get_RTC_register(uint8_t reg, uint8_t tdata[]){
 
 void rtc_msg_decode(uint8_t cmd_size, uint8_t data[]){
 
-	// TODO Refactor
+	// TODO RTC Refactor
 
 	uint8_t aux = cmd_size;
 	HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BCD);
@@ -245,7 +253,7 @@ void restore_registers() {
 	uint32_t first_value;
 	first_value = rtc_read_backup_reg(0);
 	// check the version number first
-	if( (0xFF &first_value) == BACKUP_INIT_VALUE) {
+	if( (0xFF & first_value) == BACKUP_INIT_VALUE) {
 
 		config_registers.reg[0] = first_value;
 		for(int i = 1; i < (sizeof(Config_Registers) / 4); i++) {

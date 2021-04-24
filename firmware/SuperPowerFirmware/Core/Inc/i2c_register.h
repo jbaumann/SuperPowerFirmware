@@ -8,25 +8,8 @@
 #ifndef INC_I2C_REGISTER_H_
 #define INC_I2C_REGISTER_H_
 
-/*this include defines __IO and depending on the ide config
- * it may or may not be included by default, just to be safe
- * it's included here*/
-#include "stm32f4xx_hal.h"
+#include "ups_state.h"
 
-//this struct is used by the ds3231 implementation, this struct can
-//hold an arbitrary size of an i2c transmision
-#define SLAVE_BUFFER_SIZE 32
-typedef struct {
-	uint16_t address;
-	uint8_t cmd_size;
-	uint8_t data[SLAVE_BUFFER_SIZE + 1];
-}i2c_cmd;
-
-typedef struct {
-	uint16_t address;
-	uint8_t cmd_size;
-	uint8_t* data;
-}i2c_cmd_dynamic;
 /*
  * The ConfigRegister structure holds all registers that are used
  * to set values that configure the uC. The StatusRegister structure
@@ -53,6 +36,8 @@ typedef struct {
  * Otherwise the extraction no longer works.
  * The numerical order of the OFFSET enums is important, we use it in i2c.c
  * to identify the correct struct.
+ * We use our own #define Boolean to denote values that are used as boolean,
+ * since otherwise we do not know which size the compiler picks for a _Bool.
  */
 
 enum i2c_consts {
@@ -70,6 +55,8 @@ typedef union {
 		__IO uint8_t primed;
 		__IO uint8_t force_shutdown;
 		__IO uint8_t enable_bootloader;
+		__IO uint8_t user_button_restart;
+		__IO uint8_t rtc_async_prediv;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint8_t reg[sizeof(struct _I2C_Config_Register_8Bit)];
 
@@ -77,8 +64,9 @@ typedef union {
 
 typedef union {
 	struct _I2C_Status_Register_8Bit {                 // _EXTRACT_I2C_REGISTER_
-		__IO uint8_t should_shutdown;
 		__IO uint8_t charger_status;
+		__IO uint8_t charger_contact;
+		__IO enum UPS_State ups_state;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint8_t reg[sizeof(struct _I2C_Status_Register_8Bit)];
 } I2C_Status_Register_8Bit;
@@ -90,16 +78,16 @@ typedef union {
 		__IO uint16_t restart_voltage;
 		__IO uint16_t warn_voltage;
 		__IO uint16_t ups_shutdown_voltage;
+		__IO uint16_t rtc_sync_prediv;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint16_t reg[sizeof(struct _I2C_Config_Register_16Bit) / 2]; // adjust for 16 bit
 } I2C_Config_Register_16Bit;
 
 typedef union {
 	struct _I2C_Status_Register_16Bit {                // _EXTRACT_I2C_REGISTER_
-		__IO uint16_t bat_voltage;
+		__IO uint16_t ups_bat_voltage;
 		__IO uint16_t charge_current;
 		__IO uint16_t vbus_voltage;
-		__IO uint16_t ext_voltage;
 		__IO uint16_t seconds;
 		__IO uint16_t temperature;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
@@ -116,7 +104,9 @@ typedef union {
 typedef union {
 	struct _I2C_Special_Register_16Bit {               // _EXTRACT_I2C_REGISTER_
 		__IO uint8_t version;
+		__IO uint8_t should_shutdown;
 		__IO uint8_t write_to_eeprom;
+		__IO uint8_t jump_to_bootloader;
 	} __attribute__((__packed__)) val;                 // _EXTRACT_I2C_REGISTER_
 	uint16_t reg[sizeof(struct _I2C_Special_Register_16Bit)];
 } I2C_Special_Register_16Bit;
@@ -178,24 +168,29 @@ enum I2C_Register {
 	i2creg_primed                  = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.primed),
 	i2creg_force_shutdown          = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.force_shutdown),
 	i2creg_enable_bootloader       = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.enable_bootloader),
+	i2creg_user_button_restart     = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.user_button_restart),
+	i2creg_rtc_async_prediv        = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, val.rtc_async_prediv),
 	// I2C_Status_Register_8Bit
-	i2creg_should_shutdown         = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.should_shutdown),
 	i2creg_charger_status          = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.charger_status),
+	i2creg_charger_contact         = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.charger_contact),
+	i2creg_ups_state               = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, val.ups_state),
 	// I2C_Config_Register_16Bit
 	i2creg_timeout                 = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.timeout)/2,
 	i2creg_restart_voltage         = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.restart_voltage)/2,
 	i2creg_warn_voltage            = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.warn_voltage)/2,
 	i2creg_ups_shutdown_voltage    = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.ups_shutdown_voltage)/2,
+	i2creg_rtc_sync_prediv         = CONFIG_16BIT_OFFSET + offsetof(I2C_Config_Register_16Bit, val.rtc_sync_prediv)/2,
 	// I2C_Status_Register_16Bit
-	i2creg_bat_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.bat_voltage)/2,
+	i2creg_ups_bat_voltage         = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.ups_bat_voltage)/2,
 	i2creg_charge_current          = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.charge_current)/2,
 	i2creg_vbus_voltage            = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.vbus_voltage)/2,
-	i2creg_ext_voltage             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.ext_voltage)/2,
 	i2creg_seconds                 = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.seconds)/2,
 	i2creg_temperature             = STATUS_16BIT_OFFSET + offsetof(I2C_Status_Register_16Bit, val.temperature)/2,
 	// I2C Special Registers
 	i2creg_version                 = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.version),
+	i2creg_should_shutdown         = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.should_shutdown),
 	i2creg_write_to_eeprom         = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.write_to_eeprom),
+	i2creg_jump_to_bootloader      = SPECIAL_16BIT_OFFSET + offsetof(I2C_Special_Register_16Bit, val.jump_to_bootloader),
 
 }__attribute__ ((__packed__));            // force smallest size i.e., uint_8t (GCC syntax)
 

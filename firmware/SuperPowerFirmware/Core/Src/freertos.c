@@ -26,14 +26,16 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
+
 #include <string.h>
-#include "adc.h"
 #include "i2c.h"
 #include "ch_bq25895.h"
 #include "rtc.h"
 #include "task_communication.h"
-
-// JB TODO move to external impl.
+#include "ups_state.h"
+#include "ssd1306.h"
+#include "fonts.h"
 #include "rtc.h"
 /* USER CODE END Includes */
 
@@ -54,49 +56,55 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+uint8_t registers[10];
+void get_charger_registers() {
+	HAL_StatusTypeDef ret_val;
+	uint8_t reg = 0;
+	ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1,
+			ch_i2c_master_timeout);
+	if (ret_val == HAL_OK) {
+		ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, registers,
+				sizeof(registers), ch_i2c_master_timeout);
+	}
+}
+
+
 
 /* USER CODE END Variables */
 /* Definitions for I2C */
 osThreadId_t I2CHandle;
 const osThreadAttr_t I2C_attributes = {
   .name = "I2C",
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 2048 * 4
 };
 /* Definitions for RTC */
 osThreadId_t RTCHandle;
 const osThreadAttr_t RTC_attributes = {
   .name = "RTC",
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 2048 * 4
 };
 /* Definitions for StateMachine */
 osThreadId_t StateMachineHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 2048 * 4
-};
-/* Definitions for VoltageMeasurem */
-osThreadId_t VoltageMeasuremHandle;
-const osThreadAttr_t VoltageMeasurem_attributes = {
-  .name = "VoltageMeasurem",
-  .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 2048 * 4
 };
 /* Definitions for LED */
 osThreadId_t LEDHandle;
 const osThreadAttr_t LED_attributes = {
   .name = "LED",
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 2048 * 4
 };
 /* Definitions for Test */
 osThreadId_t TestHandle;
 const osThreadAttr_t Test_attributes = {
   .name = "Test",
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 1024 * 4
 };
 /* Definitions for I2C_R_Queue */
 osMessageQueueId_t I2C_R_QueueHandle;
@@ -132,7 +140,6 @@ const osMessageQueueAttr_t Test_R_Queue_attributes = {
 void I2C_Task(void *argument);
 void RTC_Task(void *argument);
 void StateMachine_Task(void *argument);
-void VoltageMeasurement_Task(void *argument);
 void LED_Task(void *argument);
 void Test_Task(void *argument);
 
@@ -198,7 +205,7 @@ void MX_FREERTOS_Init(void) {
   I2C_R_QueueHandle = osMessageQueueNew (128, sizeof(uint16_t), &I2C_R_Queue_attributes);
 
   /* creation of RTC_R_Queue */
-  RTC_R_QueueHandle = osMessageQueueNew (2, sizeof(Task_Data), &RTC_R_Queue_attributes);
+  RTC_R_QueueHandle = osMessageQueueNew (16, sizeof(Task_Data), &RTC_R_Queue_attributes);
 
   /* creation of Statemachine_R_Queue */
   Statemachine_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &Statemachine_R_Queue_attributes);
@@ -223,9 +230,6 @@ void MX_FREERTOS_Init(void) {
   /* creation of StateMachine */
   StateMachineHandle = osThreadNew(StateMachine_Task, NULL, &StateMachine_attributes);
 
-  /* creation of VoltageMeasurem */
-  VoltageMeasuremHandle = osThreadNew(VoltageMeasurement_Task, NULL, &VoltageMeasurem_attributes);
-
   /* creation of LED */
   LEDHandle = osThreadNew(LED_Task, NULL, &LED_attributes);
 
@@ -249,8 +253,6 @@ void MX_FREERTOS_Init(void) {
   * @retval None
   */
 
-uint8_t buffer[SLAVE_BUFFER_SIZE];
-uint8_t size;
 /* USER CODE END Header_I2C_Task */
 void I2C_Task(void *argument)
 {
@@ -279,14 +281,13 @@ void I2C_Task(void *argument)
 void RTC_Task(void *argument)
 {
   /* USER CODE BEGIN RTC_Task */
-	/* Infinite loop */
 	Task_Data msg;
 	osStatus_t status;
 	for(;;)
 	{
 		status = osMessageQueueGet(RTC_R_QueueHandle, &msg, NULL, osWaitForever);
 		if(status ==osOK){
-			debug_print("RTC_Task receive, ");
+//			debug_print("RTC_Task receive, ");
 			rtc_msg_decode(msg.data_size, msg.data);
 		}
 	}
@@ -294,6 +295,8 @@ void RTC_Task(void *argument)
 }
 
 /* USER CODE BEGIN Header_StateMachine_Task */
+
+
 /**
 * @brief Function implementing the StateMachine thread.
 * @param argument: Not used
@@ -304,79 +307,110 @@ void RTC_Task(void *argument)
 void StateMachine_Task(void *argument)
 {
   /* USER CODE BEGIN StateMachine_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StateMachine_Task */
-}
 
-/* USER CODE BEGIN Header_VoltageMeasurement_Task */
-/**
-* @brief Function implementing the VoltageMeasurem thread.
-* @param argument: Not used
-* @retval None
-*/
-
-/* USER CODE END Header_VoltageMeasurement_Task */
-void VoltageMeasurement_Task(void *argument)
-{
-  /* USER CODE BEGIN VoltageMeasurement_Task */
 	HAL_StatusTypeDef ret_val;
 
+	get_charger_registers();
 
 	// on first execution
-	//ret_val = ch_init(&hi2c1);
-	while(1){
-		osDelay(100);
-	}
+	ret_val = ch_init(&hi2c3);
+
+
+	SSD1306_Init(&hi2c3);
+
+	int cx = 0;
+	int bat_y = 0;
+	int vbus_y = 0;
+	int state_y = 1*19;
+	int should_shutdown_y = 2*19;
+	int seconds_y = 3*19;
+
 	/* Infinite loop */
 	for (;;) {
 
-		// Turn the I2C slave functionality off
-		ret_val = HAL_I2C_DisableListen_IT(&hi2c1);
+		if (hi2c3.State == HAL_I2C_STATE_READY) {
+			get_charger_registers();
 
-		if(hi2c1.State == HAL_I2C_STATE_READY) {
 			// start ADC conversion
-			ret_val = ch_transfer_byte_to_register(&hi2c1, CH_CONV_ADC, CH_CONV_ADC_START);
+			ret_val = ch_transfer_byte_to_register(&hi2c3, CH_CONV_ADC,
+					CH_CONV_ADC_START);
 
-			if(ret_val == HAL_OK) {
-				// We are waiting for the ADC to finish its conversion and
-				// switch back to listen mode for until it is done
-				HAL_I2C_EnableListen_IT(&hi2c1);
+			get_charger_registers();
+
+			if (ret_val == HAL_OK) {
 				osDelay(ch_conv_delay); // time for conversion, see 8.2.8 Battery Monitor on p.24
-				ret_val = HAL_I2C_DisableListen_IT(&hi2c1);
-				if(ret_val == HAL_OK) {
-					// Read values from charger
-					uint8_t reg = CH_STATUS;
-					ret_val = HAL_I2C_Master_Transmit(&hi2c1, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
+				// Read values from charger
+				uint8_t reg = CH_STATUS;
+				ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
+				if (ret_val == HAL_OK) {
+//					ret_val = HAL_I2C_Master_Receive_IT(&hi2c3, CHARGER_ADDRESS,
+//							i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
+					// we now use blocking I2C communication since we are the master
+					ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg,
+							sizeof(I2C_CH_BQ25895_Register), ch_i2c_master_timeout);
 					if(ret_val == HAL_OK) {
-						ret_val = HAL_I2C_Master_Receive_IT(&hi2c1, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
-					} else if(ret_val == HAL_ERROR) { // Master Transmit Address
-						// This should never happen because we just did a successful
-						// transmit a second ago. We have to ignore this and hope for
-						// the next time.
+						i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
+						uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
+						i2c_status_register_16bit->val.ups_bat_voltage = batv;
+						uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
+						i2c_status_register_16bit->val.vbus_voltage = vbus_v;
+						uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
+						i2c_status_register_16bit->val.charge_current = ch_current;
+
+						// ok, contact has been established, we can use the values
+						i2c_status_register_8bit->val.charger_contact = true;
 					}
-				} else if(ret_val == HAL_ERROR) { // Disable Listen
-					// if we can't turn off the listen mode then there
-					// is an ongoing communication between RPi and us.
-					// We'll try again next time
+
+					get_charger_registers();
+				} else if (ret_val == HAL_ERROR) { // Master Transmit Address
+					// This should never happen because we just did a successful
+					// transmit a second ago. We have to ignore this and hope for
+					// the next time.
 				}
-			} else if(ret_val == HAL_ERROR) { // Master_Transmit ADC
+			} else if (ret_val == HAL_ERROR) { // Master_Transmit ADC
 				// cannot transmit data to the charger, means the device
 				// is not reachable. We simply ignore this and wait for
 				// it to come online.
 			}
 		}
-		if(ret_val != HAL_OK) {
-			HAL_I2C_EnableListen_IT(&hi2c1);
-		}
+		handle_state();
+		if(i2c_status_register_8bit->val.charger_contact) {
+			char buffer[6];
 
-		osDelay(ch_update_interval);
+			sprintf(buffer, "%4d", i2c_status_register_16bit->val.ups_bat_voltage);
+			SSD1306_GotoXY(cx, bat_y);
+			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			SSD1306_GotoXY(44, vbus_y);
+			if(i2c_status_register_8bit->val.charger_status & 0x4) {
+				SSD1306_Putc('+', &Font_11x18, SSD1306_COLOR_WHITE);
+			} else {
+				SSD1306_Putc('-', &Font_11x18, SSD1306_COLOR_WHITE);
+			}
+
+			sprintf(buffer, "0x%02x", i2c_status_register_8bit->val.ups_state);
+			SSD1306_GotoXY(cx, state_y);
+			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			sprintf(buffer, "0x%02x", ups_state_should_shutdown);
+			SSD1306_GotoXY(cx, should_shutdown_y);
+			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			uint16_t secs = i2c_status_register_16bit->val.seconds;
+			if(secs > 9999) {
+				secs -= 10000;
+			}
+			sprintf(buffer, "%05d", secs);
+			SSD1306_GotoXY(cx, seconds_y);
+			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			SSD1306_UpdateScreen();
+		}
+		// TODO Remove comment
+		//osDelay(ups_update_interval);
 
 	}
-  /* USER CODE END VoltageMeasurement_Task */
+  /* USER CODE END StateMachine_Task */
 }
 
 /* USER CODE BEGIN Header_LED_Task */
@@ -462,19 +496,20 @@ void Test_Task(void *argument)
   /* USER CODE BEGIN Test_Task */
 	Task_Data msg;
 	osStatus_t status;
+	uint32_t waiting_time = 1000;
+	uint8_t len = 0;
   /* Infinite loop */
   for(;;)
   {
-		status = osMessageQueueGet(Test_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
+		status = osMessageQueueGet(Test_R_QueueHandle, &msg, NULL, waiting_time); // wait for message
 		if (status == osOK) {
 			// copy msg to test_task_data
-			uint8_t len = (msg.data_size > sizeof(test_task_data)) ? sizeof(test_task_data) : msg.data_size;
+			len = (msg.data_size > sizeof(test_task_data)) ? sizeof(test_task_data) : msg.data_size;
 			memcpy(test_task_data, msg.data, len);
-
-			// Here comes the business logic
-			for (uint8_t i = 0; i < len; i++) {
-				test_task_data[i] *= 2;
-			}
+		}
+		// Here comes the business logic
+		for (uint8_t i = 0; i < len; i++) {
+			test_task_data[i] += 1;
 		}
 
   }
