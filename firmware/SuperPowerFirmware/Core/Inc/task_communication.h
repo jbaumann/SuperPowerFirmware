@@ -2,7 +2,7 @@
  * queue_handles.h
  *
  *  Created on: Dec 11, 2020
- *      Author: jbaumann
+ *      Author: jbaumann, Hector
  */
 
 #ifndef INC_TASK_COMMUNICATION_H_
@@ -59,6 +59,10 @@ static const Task_Communication task_communication[] = {
 		},
 		{
 			.queue = &LED_R_QueueHandle,
+			.callback = NULL,                            // _EXTRACT_TASK_COMM_
+		},
+		{
+			.queue = &RTC_R_QueueHandle,
 			.callback = NULL,                            // _EXTRACT_TASK_COMM_
 		},
 };

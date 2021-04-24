@@ -12,6 +12,7 @@ class RTCCalibration:
     RTC_ASYNC_PREDIV_REGISTER = 10
 
     def __init__(self, bus_number=1, address=0x41):
+        self.RTC_ID = 0xF2
         self.address = address
         self.i2c_bus = bus_number
         self.initial_error = 0
@@ -35,7 +36,7 @@ class RTCCalibration:
     def send_to_mc(self, data):
         register = data.to_bytes(2,'big')
         clase = SuperPower(1,0x41,0.1,1)
-        clase.send_to_task(0xf1,[10, register[0], register[1]])
+        clase.send_to_task(self.RTC_ID,[10, register[0], register[1]])
 
     def setCurrentTime(self):
         next_interval = datetime.now() + timedelta(seconds=1)

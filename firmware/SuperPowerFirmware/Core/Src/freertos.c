@@ -166,18 +166,6 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 }
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN PREPOSTSLEEP */
-__weak void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
-{
-/* place for user code */
-}
-
-__weak void PostSleepProcessing(uint32_t *ulExpectedIdleTime)
-{
-/* place for user code */
-}
-/* USER CODE END PREPOSTSLEEP */
-
 /**
   * @brief  FreeRTOS initialization
   * @param  None
@@ -287,8 +275,16 @@ void RTC_Task(void *argument)
 	{
 		status = osMessageQueueGet(RTC_R_QueueHandle, &msg, NULL, osWaitForever);
 		if(status ==osOK){
-//			debug_print("RTC_Task receive, ");
-			rtc_msg_decode(msg.data_size, msg.data);
+			//			debug_print("RTC_Task receive, ");
+			if(msg.data_size >4 && msg.data[0] == 0xF2 && msg.data[1] == 10){
+					hrtc.Init.SynchPrediv = (msg.data[2] << 8) + msg.data[3];
+
+					if (HAL_RTC_Init(&hrtc) != HAL_OK){
+						Error_Handler();
+					}
+			}else{
+				rtc_msg_decode(msg.data_size, msg.data);
+			}
 		}
 	}
   /* USER CODE END RTC_Task */
