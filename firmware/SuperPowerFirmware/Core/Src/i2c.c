@@ -608,6 +608,14 @@ void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c) {
 	HAL_I2C_EnableListen_IT(&hi2c1);
 }
 
+/*
+ * Re-Initialize the communication bus with the RPi
+ */
+void reInit_I2C1() {
+	//HAL_I2C_MspDeInit(&hi2c1);
+	MX_I2C1_Init();
+}
+
 /* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

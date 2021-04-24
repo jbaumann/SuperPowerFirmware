@@ -109,6 +109,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	// The user button can be pressed to restart the RPi if turned off
 	// or to signal an action if it is running
 	if (GPIO_Pin == User_Button_Pin) {
+
+		/*
 		uint8_t should_restart = i2c_status_register_16bit->val.seconds
 				> i2c_config_register_16bit->val.timeout;
 		should_restart = should_restart && i2c_config_register_8bit->val.user_button_restart;
@@ -121,6 +123,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			// signal the Raspberry that the button has been pressed.
 			ups_state_should_shutdown |= shutdown_cause_button;
 		}
+		*/
+		ups_state_should_shutdown |= shutdown_cause_button;
 	}
 }
 
