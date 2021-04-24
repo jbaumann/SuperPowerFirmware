@@ -488,7 +488,6 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 	i2c_triggered_ups_state_change();
 
 	i2c_primary_address = (hi2c->Init.OwnAddress1 == AddrMatchCode);
-	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	if (i2c_primary_address) {
 		// the UPS is accessed
