@@ -305,7 +305,7 @@ void StateMachine_Task(void *argument)
 
 	HAL_StatusTypeDef ret_val;
 
-	//get_charger_registers();
+	get_charger_registers();
 
  	// on first execution
 	ret_val = ch_init(&hi2c3);
@@ -334,52 +334,52 @@ void StateMachine_Task(void *argument)
 	/* Infinite loop */
 	for (;;) {
 
-//		if (hi2c3.State == HAL_I2C_STATE_READY) {
-//			get_charger_registers();
-//
-//			// start ADC conversion
-//			ret_val = ch_transfer_byte_to_register(&hi2c3, CH_CONV_ADC,
-//					CH_CONV_ADC_START);
-//
-//			get_charger_registers();
-//
-//			if (ret_val == HAL_OK) {
-//				osDelay(ch_conv_delay); // time for conversion, see 8.2.8 Battery Monitor on p.24
-//				// Read values from charger
-//				uint8_t reg = CH_STATUS;
-//				ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
-//				if (ret_val == HAL_OK) {
-////					ret_val = HAL_I2C_Master_Receive_IT(&hi2c3, CHARGER_ADDRESS,
-////							i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
-//					// we now use blocking I2C communication since we are the master
-//					ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg,
-//							sizeof(I2C_CH_BQ25895_Register), ch_i2c_master_timeout);
-//					if(ret_val == HAL_OK) {
-//						i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
-//						uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
-//						i2c_status_register_16bit->val.ups_bat_voltage = batv;
-//						uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
-//						i2c_status_register_16bit->val.vbus_voltage = vbus_v;
-//						uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
-//						i2c_status_register_16bit->val.charge_current = ch_current;
-//
-//						// ok, contact has been established, we can use the values
-//						i2c_status_register_8bit->val.charger_contact = true;
-//					}
-//
-//					get_charger_registers();
-//				} else if (ret_val == HAL_ERROR) { // Master Transmit Address
-//					// This should never happen because we just did a successful
-//					// transmit a second ago. We have to ignore this and hope for
-//					// the next time.
-//				}
-//			} else if (ret_val == HAL_ERROR) { // Master_Transmit ADC
-//				// cannot transmit data to the charger, means the device
-//				// is not reachable. We simply ignore this and wait for
-//				// it to come online.
-//			}
-//		}
-		//handle_state();
+		if (hi2c3.State == HAL_I2C_STATE_READY) {
+			get_charger_registers();
+
+			// start ADC conversion
+			ret_val = ch_transfer_byte_to_register(&hi2c3, CH_CONV_ADC,
+					CH_CONV_ADC_START);
+
+			get_charger_registers();
+
+			if (ret_val == HAL_OK) {
+				osDelay(ch_conv_delay); // time for conversion, see 8.2.8 Battery Monitor on p.24
+				// Read values from charger
+				uint8_t reg = CH_STATUS;
+				ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
+				if (ret_val == HAL_OK) {
+//					ret_val = HAL_I2C_Master_Receive_IT(&hi2c3, CHARGER_ADDRESS,
+//							i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
+					// we now use blocking I2C communication since we are the master
+					ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg,
+							sizeof(I2C_CH_BQ25895_Register), ch_i2c_master_timeout);
+					if(ret_val == HAL_OK) {
+						i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
+						uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
+						i2c_status_register_16bit->val.ups_bat_voltage = batv;
+						uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
+						i2c_status_register_16bit->val.vbus_voltage = vbus_v;
+						uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
+						i2c_status_register_16bit->val.charge_current = ch_current;
+
+						// ok, contact has been established, we can use the values
+						i2c_status_register_8bit->val.charger_contact = true;
+					}
+
+					get_charger_registers();
+				} else if (ret_val == HAL_ERROR) { // Master Transmit Address
+					// This should never happen because we just did a successful
+					// transmit a second ago. We have to ignore this and hope for
+					// the next time.
+				}
+			} else if (ret_val == HAL_ERROR) { // Master_Transmit ADC
+				// cannot transmit data to the charger, means the device
+				// is not reachable. We simply ignore this and wait for
+				// it to come online.
+			}
+		}
+		handle_state();
 		do{
 		u8g2_FirstPage(&u8g2);
 		u8g2_SetFont(&u8g2, u8g2_font_unifont_t_symbols);
@@ -388,39 +388,40 @@ void StateMachine_Task(void *argument)
 		u8g2_DrawStr(&u8g2, 10, 25, "Team!!");
 		u8g2_DrawGlyph(&u8g2, 85, 30, 0x2603);
 		} while(u8g2_NextPage(&u8g2));
-		osDelay(100);
-//		if(i2c_status_register_8bit->val.charger_contact) {
-//			char buffer[6];
-//
-//			sprintf(buffer, "%4d", i2c_status_register_16bit->val.ups_bat_voltage);
-//			SSD1306_GotoXY(cx, bat_y);
-//			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
-//
-//			SSD1306_GotoXY(44, vbus_y);
-//			if(i2c_status_register_8bit->val.charger_status & 0x4) {
-//				SSD1306_Putc('+', &Font_11x18, SSD1306_COLOR_WHITE);
-//			} else {
-//				SSD1306_Putc('-', &Font_11x18, SSD1306_COLOR_WHITE);
-//			}
-//
-//			sprintf(buffer, "0x%02x", i2c_status_register_8bit->val.ups_state);
-//			SSD1306_GotoXY(cx, state_y);
-//			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
-//
-//			sprintf(buffer, "0x%02x", ups_state_should_shutdown);
-//			SSD1306_GotoXY(cx, should_shutdown_y);
-//			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
-//
-//			uint16_t secs = i2c_status_register_16bit->val.seconds;
-//			if(secs > 9999) {
-//				secs -= 10000;
-//			}
-//			sprintf(buffer, "%05d", secs);
-//			SSD1306_GotoXY(cx, seconds_y);
-//			SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
-//
-//			SSD1306_UpdateScreen();
-//		}
+
+
+		if(i2c_status_register_8bit->val.charger_contact) {
+			char buffer[6];
+
+			sprintf(buffer, "%4d", i2c_status_register_16bit->val.ups_bat_voltage);
+			//SSD1306_GotoXY(cx, bat_y);
+			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			//SSD1306_GotoXY(44, vbus_y);
+			if(i2c_status_register_8bit->val.charger_status & 0x4) {
+				//SSD1306_Putc('+', &Font_11x18, SSD1306_COLOR_WHITE);
+			} else {
+				//SSD1306_Putc('-', &Font_11x18, SSD1306_COLOR_WHITE);
+			}
+
+			sprintf(buffer, "0x%02x", i2c_status_register_8bit->val.ups_state);
+			//SSD1306_GotoXY(cx, state_y);
+			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			sprintf(buffer, "0x%02x", ups_state_should_shutdown);
+			//SSD1306_GotoXY(cx, should_shutdown_y);
+			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			uint16_t secs = i2c_status_register_16bit->val.seconds;
+			if(secs > 9999) {
+				secs -= 10000;
+			}
+			sprintf(buffer, "%05d", secs);
+			//SSD1306_GotoXY(cx, seconds_y);
+			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
+
+			//SSD1306_UpdateScreen();
+		}
 		// TODO Remove comment
 		//osDelay(ups_update_interval);
 

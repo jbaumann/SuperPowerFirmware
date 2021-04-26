@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "FreeRTOS.h"
+#include "cmsis_os2.h"
 #include "task.h"
 #include "u8g2.h"
 #include "i2c.h"

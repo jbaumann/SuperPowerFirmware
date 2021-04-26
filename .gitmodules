@@ -1,3 +1,0 @@
-[submodule "u8g2"]
-	path = firmware/SuperPowerFirmware/Middlewares/Third_Party/u8g2
-	url = https://github.com/olikraus/u8g2.git
