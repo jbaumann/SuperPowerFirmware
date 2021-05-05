@@ -100,7 +100,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if (GPIO_Pin == B1_Pin) {
 		// TODO Bootloader on button press remove?
 		if (i2c_config_register_8bit->val.enable_bootloader != 0) {
-			jumpToBootloader();
+			// TODO remove
+			// jumpToBootloader();
 		}
 		else {
 			// Raspberry signals shutdown?

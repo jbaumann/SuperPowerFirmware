@@ -37,6 +37,10 @@
 #include "ssd1306.h"
 #include "fonts.h"
 #include "rtc.h"
+
+//#define U8G2_USE_DYNAMIC_ALLOC
+//#include "u8g2.h"
+//#include "u8g2_port.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -284,6 +288,9 @@ void RTC_Task(void *argument)
 }
 
 /* USER CODE BEGIN Header_StateMachine_Task */
+//static u8g2_t u8g2;
+//uint8_t *buffer;
+//uint8_t *bufferDMA;
 
 
 /**
@@ -295,7 +302,9 @@ void RTC_Task(void *argument)
 /* USER CODE END Header_StateMachine_Task */
 void StateMachine_Task(void *argument)
 {
-  /* USER CODE BEGIN StateMachine_Task */
+    /* USER CODE BEGIN StateMachine_Task */
+
+	uint8_t *buf;
 
 	HAL_StatusTypeDef ret_val;
 
@@ -306,6 +315,20 @@ void StateMachine_Task(void *argument)
 
 
 	SSD1306_Init(&hi2c3);
+//	buf = (uint8_t*)pvPortMalloc(512);
+//	buffer = (uint8_t*)pvPortMalloc(32);
+//	bufferDMA = (uint8_t*)pvPortMalloc(32);
+//	u8g2_SetBufferPtr(&u8g2, buf);
+//	u8g2_SetI2CAddress(&u8g2, 0x3c);
+//	u8g2_InitDisplay(&u8g2);
+//	u8g2_SetPowerSave(&u8g2, 0);
+//	//u8g2_Setup_ssd1306_i2c_128x32_univision_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+//	u8g2_Setup_sh1107_i2c_64x128_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+//	//u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+//
+//	//u8g2_ClearDisplay(&u8g2);
+//	u8g2_DrawStr(&u8g2, 10, 10, "T");
+//	u8g2_SendBuffer(&u8g2);
 
 	int cx = 0;
 	int bat_y = 0;
@@ -363,6 +386,19 @@ void StateMachine_Task(void *argument)
 			}
 		}
 		handle_state();
+
+		/*
+		u8g2_FirstPage(&u8g2);
+		do{
+			u8g2_SetFont(&u8g2, u8g2_font_unifont_t_symbols);
+			//u8g2_DrawCircle(&u8g2, 70, 20, 8, U8G2_DRAW_ALL);
+			//u8g2_DrawStr(&u8g2, 10, 10, "Super Power");
+			//u8g2_DrawStr(&u8g2, 10, 25, "Team!!");
+			//u8g2_DrawGlyph(&u8g2, 85, 30, 0x2603);
+			u8g2_DrawStr(&u8g2, 10, 10, "T");
+		} while(u8g2_NextPage(&u8g2));
+*/
+
 		if(i2c_status_register_8bit->val.charger_contact) {
 			char buffer[6];
 

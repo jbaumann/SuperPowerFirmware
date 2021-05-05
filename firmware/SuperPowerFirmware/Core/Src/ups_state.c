@@ -33,8 +33,8 @@
 #include "gpio.h"
 #include "i2c.h"
 
-uint32_t millis_last_contact      = 0;
-uint8_t ups_state_should_shutdown = shutdown_cause_none;
+uint32_t millis_last_contact               = 0;
+volatile uint8_t ups_state_should_shutdown = shutdown_cause_none;
 
 
 /*
@@ -93,7 +93,7 @@ void voltage_dependent_state_change(uint16_t seconds_since_last_contact) {
 /*
  * Act on the current state
  */
-void act_on_state_change(uint16_t seconds_since_last_contact) {
+void act_on_state_change() {
 	// This is placed before the general check of all stages as to
 	// not duplicate the code of the shutdown_state
 	if (i2c_status_register_8bit->val.ups_state == ups_warn_to_shutdown) {
@@ -136,15 +136,14 @@ void act_on_state_change(uint16_t seconds_since_last_contact) {
 	}
 
 	if (i2c_status_register_8bit->val.ups_state == ups_running_state) {
-		_Bool should_restart = seconds_since_last_contact
-				> i2c_config_register_16bit->val.timeout;
+		_Bool should_restart = i2c_status_register_16bit->val.seconds > i2c_config_register_16bit->val.timeout;
 
-		_Bool reset_i2c_bus = seconds_since_last_contact > (i2c_config_register_16bit->val.timeout / 2);
+		volatile _Bool reset_i2c_bus = i2c_status_register_16bit->val.seconds > (i2c_config_register_16bit->val.timeout / 2);
 
         // reset bus until we get connection again or until time is out
-
         if (reset_i2c_bus && !(ups_state_should_shutdown & shutdown_cause_i2c_has_been_reset)) {
-        	reInit_I2C1();
+        	// Doesn't work yet
+//        	reInit_I2C1();
         	ups_state_should_shutdown |= shutdown_cause_i2c_has_been_reset;
         }
 
@@ -158,9 +157,6 @@ void act_on_state_change(uint16_t seconds_since_last_contact) {
 				osMessageQueuePut(LED_R_QueueHandle, &reboot_rpi, 0, 0);
 
 				restart_raspberry();
-
-				// Primed has been set by the button press, we use the restart time for debouncing
-				ups_state_should_shutdown &= ~shutdown_cause_button;
 
 				reset_timeout();
 			}
@@ -192,7 +188,7 @@ void handle_state() {
 		}
 	}
 
-	act_on_state_change(seconds_since_last_contact);
+	act_on_state_change();
 }
 
 /*

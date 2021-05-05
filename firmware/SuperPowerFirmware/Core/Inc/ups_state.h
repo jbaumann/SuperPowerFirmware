@@ -46,6 +46,6 @@ enum Shutdown_Cause {
   shutdown_cause_bat_voltage        = bit(7),
 };
 
-extern uint8_t ups_state_should_shutdown;
+extern volatile uint8_t ups_state_should_shutdown;
 
 #endif /* INC_UPS_STATE_H_ */

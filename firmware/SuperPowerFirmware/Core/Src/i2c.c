@@ -612,7 +612,7 @@ void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c) {
  * Re-Initialize the communication bus with the RPi
  */
 void reInit_I2C1() {
-	//HAL_I2C_MspDeInit(&hi2c1);
+	HAL_I2C_MspDeInit(&hi2c1);
 	MX_I2C1_Init();
 }
 
