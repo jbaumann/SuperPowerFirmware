@@ -31,9 +31,10 @@
 #include "i2c_register.h"
 #include "task_communication.h"
 #include "gpio.h"
+#include "i2c.h"
 
-uint32_t millis_last_contact      = 0;
-uint8_t ups_state_should_shutdown = shutdown_cause_none;
+uint32_t millis_last_contact               = 0;
+volatile uint8_t ups_state_should_shutdown = shutdown_cause_none;
 
 
 /*
@@ -92,7 +93,7 @@ void voltage_dependent_state_change(uint16_t seconds_since_last_contact) {
 /*
  * Act on the current state
  */
-void act_on_state_change(uint16_t seconds_since_last_contact) {
+void act_on_state_change() {
 	// This is placed before the general check of all stages as to
 	// not duplicate the code of the shutdown_state
 	if (i2c_status_register_8bit->val.ups_state == ups_warn_to_shutdown) {
@@ -135,25 +136,28 @@ void act_on_state_change(uint16_t seconds_since_last_contact) {
 	}
 
 	if (i2c_status_register_8bit->val.ups_state == ups_running_state) {
-		_Bool should_restart = false;
+		_Bool should_restart = i2c_status_register_16bit->val.seconds > i2c_config_register_16bit->val.timeout;
 
-		should_restart = seconds_since_last_contact
-				> i2c_config_register_16bit->val.timeout;
+		volatile _Bool reset_i2c_bus = i2c_status_register_16bit->val.seconds > (i2c_config_register_16bit->val.timeout / 2);
+
+        // reset bus until we get connection again or until time is out
+        if (reset_i2c_bus && !(ups_state_should_shutdown & shutdown_cause_i2c_has_been_reset)) {
+        	// Doesn't work yet
+//        	reInit_I2C1();
+        	ups_state_should_shutdown |= shutdown_cause_i2c_has_been_reset;
+        }
 
 		if (should_restart) {
-			if (i2c_config_register_8bit->val.primed > 0) {
+			uint8_t primed = i2c_config_register_8bit->val.primed;
+			if (primed != 0
+					|| (primed == 0 && (ups_state_should_shutdown & shutdown_cause_button))) {
 				// RPi has not accessed the I2C interface for more than timeout seconds
-				// or the button has beend pressed (primed == 2).
+				// or the button has beend pressed.
 				// We restart it. Signal restart by blinking ten times
 				osMessageQueuePut(LED_R_QueueHandle, &reboot_rpi, 0, 0);
 
 				restart_raspberry();
 
-				// Primed has been set by the button press, we use the restart time
-				// for debouncing
-				if(i2c_config_register_8bit->val.primed == 2) {
-					i2c_config_register_8bit->val.primed = 0;
-				}
 				reset_timeout();
 			}
 		}
@@ -184,7 +188,7 @@ void handle_state() {
 		}
 	}
 
-	act_on_state_change(seconds_since_last_contact);
+	act_on_state_change();
 }
 
 /*
@@ -195,6 +199,7 @@ void handle_state() {
 void reset_timeout() {
 	i2c_status_register_16bit->val.seconds = 0;
 	millis_last_contact = HAL_GetTick();
+	ups_state_should_shutdown &= ~shutdown_cause_i2c_has_been_reset;
 }
 
 /*

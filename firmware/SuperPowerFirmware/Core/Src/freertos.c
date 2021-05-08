@@ -298,9 +298,6 @@ uint8_t *bufferDMA;
 /* USER CODE END Header_StateMachine_Task */
 void StateMachine_Task(void *argument)
 {
-  /* USER CODE BEGIN StateMachine_Task */
-	static u8g2_t u8g2;
-	uint8_t *buf;
 
 
 	HAL_StatusTypeDef ret_val;
@@ -312,10 +309,12 @@ void StateMachine_Task(void *argument)
 
 
 	//SSD1306_Init(&hi2c3);
+	static u8g2_t u8g2;
+	uint8_t *buf;
+	buf = (uint8_t*)pvPortMalloc(512);//buffer used as a "matrix" to draw on the display
+	buffer = (uint8_t*)pvPortMalloc(32); //buffer used for communication via i2c in this case
 
-	buf = (uint8_t*)pvPortMalloc(512);
-	buffer = (uint8_t*)pvPortMalloc(32);
-	bufferDMA = (uint8_t*)pvPortMalloc(32);
+
 	u8g2_Setup_ssd1306_i2c_128x32_univision_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
 	u8g2_SetBufferPtr(&u8g2, buf);
 	u8g2_SetI2CAddress(&u8g2, 0x3c);
@@ -323,6 +322,13 @@ void StateMachine_Task(void *argument)
 	u8g2_SetPowerSave(&u8g2, 0);
 	u8g2_ClearDisplay(&u8g2);
 
+//	//u8g2_Setup_ssd1306_i2c_128x32_univision_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+//	u8g2_Setup_sh1107_i2c_64x128_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+//	//u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+//
+
+//	u8g2_DrawStr(&u8g2, 10, 10, "T");
+//	u8g2_SendBuffer(&u8g2);
 
 	int cx = 0;
 	int bat_y = 0;
@@ -446,11 +452,11 @@ void LED_Task(void *argument)
 
     for(;;)
     {
-    	if(background == NULL) {
-    		waiting_time = osWaitForever; // wait for message
-    	} else {
-    		waiting_time = 0; // do not wait for message
-    	}
+	if(background == NULL) {
+		waiting_time = osWaitForever; // wait for message
+	} else {
+		waiting_time = 0; // do not wait for message
+	}
 		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, waiting_time);
 		if (status == osOK) {
 			if(msg->iterations == 0) {
