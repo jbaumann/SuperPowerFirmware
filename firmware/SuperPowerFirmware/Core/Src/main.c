@@ -108,6 +108,7 @@ int main(void)
 	}
 
 #ifdef FREERTOS_TOTAL_RUNTIME_TIMER
+  initializeTimerForRunTimeStats();
   configureTimerForRunTimeStats();
 #endif
 
