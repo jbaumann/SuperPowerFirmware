@@ -377,6 +377,104 @@ class SuperPowerConfig:
         except Exception:
             logging.warning("cannot write config file.")
 
+    def validate_config(self):
+        # TODO generate the keys instead of hardcoding them
+        WARN_VOLTAGE = 'warn voltage'
+        SHUTDOWN_VOLTAGE = 'ups shutdown voltage'
+        RESTART_VOLTAGE = 'restart voltage'
+        low_val = 3000
+        high_val = 4200
+        set_to_default = False
+        wv = -1
+        sv = -1
+        rv = -1
+
+        # First check the absolute values
+        try:
+            wv = int(self.get(WARN_VOLTAGE))
+            if wv < low_val or wv > high_val:
+                logging.warning("Config: Warn voltage outside limits. Setting all voltages to default")
+                set_to_default = True
+        except ValueError:
+            # Voltage is not set
+            pass
+        except KeyError:
+            # The key is not valid, we have a problem
+            logging.error("Key %s is not valid. Cannot validate the value." % WARN_VOLTAGE)
+
+        try:
+            sv = int(self.get(SHUTDOWN_VOLTAGE))
+            if sv < low_val or sv > high_val:
+                logging.warning("Config: Shutdown voltage outside limits. Setting all voltages to default")
+                set_to_default = True
+        except ValueError:
+            # Voltage is not set
+            pass
+        except KeyError:
+            # The key is not valid, we have a problem
+            logging.error("Key %s is not valid. Cannot validate the value." % SHUTDOWN_VOLTAGE)
+
+        try:
+            rv = int(self.get(RESTART_VOLTAGE))
+            if rv < low_val or rv > high_val:
+                logging.warning("Config: Restart voltage outside limits. Setting all voltages to default")
+                set_to_default = True
+        except ValueError:
+            # Voltage is not set
+            pass
+        except KeyError:
+            # The key is not valid, we have a problem
+            logging.error("Key %s is not valid. Cannot validate the value." % RESTART_VOLTAGE)
+
+        if set_to_default == True:
+            if wv != -1:
+                self.parser[self.DAEMON_SECTION].pop(WARN_VOLTAGE, None)
+            if sv != -1:
+                self.parser[self.DAEMON_SECTION].pop(SHUTDOWN_VOLTAGE, None)
+            if rv != -1:
+                self.parser[self.DAEMON_SECTION].pop(RESTART_VOLTAGE, None)
+            return
+
+        if wv == -1 or sv == -1 or rv == -1:
+            # we had a key error and cannot do anything further
+            return
+        # Check the relation of values
+        # We know that all voltages are inside the limits
+        voltage_changed = False
+        min_distance = 200
+        if wv < sv:
+            logging.warning("Config: Warn voltage < shutdown voltage. Taking corrective action.")
+            sv = wv - min_distance
+            voltage_changed = True
+        if wv < sv or wv > rv:
+            logging.warning("Config: Warn voltage > restart voltage. Taking corrective action.")
+            rv = wv + min_distance
+            voltage_changed = True
+        if sv < low_val:
+            diff = low_val - sv
+            sv = low_val
+            wv = wv + diff
+            if rv - wv < min_distance:
+                rv = wv + min_distance
+            voltage_changed = True
+        if rv > high_val:
+            diff = rv - high_val
+            rv = high_val
+            wv = wv - diff
+            if wv - sv < min_distance:
+                sv = wv - min_distance
+            voltage_changed = True
+
+        if voltage_changed == True:
+            # Write the new values back to the config
+            self.parser[self.DAEMON_SECTION][WARN_VOLTAGE] = wv
+            self.parser[self.DAEMON_SECTION][SHUTDOWN_VOLTAGE] = sv
+            self.parser[self.DAEMON_SECTION][RESTART_VOLTAGE] = rv
+            logging.warning("Corrected voltage values have been written to the config")
+            return
+
+        logging.info("Config validated")
+
     def merge_and_sync_values(self, superpower):
         changed_config = False
         logging.debug("Merging")
