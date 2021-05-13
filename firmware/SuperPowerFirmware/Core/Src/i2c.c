@@ -325,14 +325,14 @@ uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tda
 		// access to the CONFIG_8BIT struct
 		uint8_t reg = register_number - CONFIG_8BIT_OFFSET;
 		if(reg < i2c_config_reg_8bit_size) {
-			tdata[0] = i2c_config_register_8bit->reg[reg];
+			tdata[0] = i2c_config_register_8bit_reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)CONFIG_16BIT_OFFSET) {
 
 		// access to the STATUS_8BIT struct
 		uint8_t reg = register_number - STATUS_8BIT_OFFSET;
 		if(reg < i2c_status_reg_8bit_size) {
-			tdata[0] = i2c_status_register_8bit->reg[reg];
+			tdata[0] = i2c_status_register_8bit_reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)STATUS_16BIT_OFFSET) {
 
@@ -342,7 +342,7 @@ uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tda
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
 		if(reg < i2c_config_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) tdata;
-			val[0] = i2c_config_register_16bit->reg[reg];
+			val[0] = i2c_config_register_16bit_reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 
@@ -352,7 +352,7 @@ uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tda
 		uint8_t reg = register_number - STATUS_16BIT_OFFSET;
 		if(reg < i2c_status_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) tdata;
-			val[0] = i2c_status_register_16bit->reg[reg];
+			val[0] = i2c_status_register_16bit_reg[reg];
 		}
 	} else if (register_number < (enum I2C_Register) TASK_COMMUNICATION) {
 		/* access to the SPECIAL_16BIT struct */
@@ -407,7 +407,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 		// access to the CONFIG_8BIT struct
 		uint8_t reg = register_number - CONFIG_8BIT_OFFSET;
 		if(reg < i2c_config_reg_8bit_size) {
-			i2c_config_register_8bit->reg[reg] = data[0];
+			i2c_config_register_8bit_reg[reg] = data[0];
 			reg_has_changed = true;
 		}
 	} else if (register_number < CONFIG_16BIT_OFFSET) {
@@ -418,7 +418,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 		uint8_t reg = register_number - CONFIG_16BIT_OFFSET;
 		if(reg < i2c_config_reg_16bit_size) {
 			uint16_t *val = (uint16_t*) (data);
-			i2c_config_register_16bit->reg[reg] = val[0];
+			i2c_config_register_16bit_reg[reg] = val[0];
 
 			reg_has_changed = true;
 		}
@@ -429,7 +429,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 		/* access to the SPECIAL_16BIT struct */
 		switch (register_number) {
 		case i2creg_jump_to_bootloader:
-			if(i2c_config_register_8bit->val.enable_bootloader != 0) {
+			if(i2c_config_register_8bit->enable_bootloader != 0) {
 				// we are jumping into the bootloader
 				jumpToBootloader();
 			}

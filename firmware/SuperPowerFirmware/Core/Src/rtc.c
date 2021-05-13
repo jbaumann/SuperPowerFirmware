@@ -240,8 +240,10 @@ void rtc_write_backup_reg(uint32_t backup_register, uint32_t data) {
  * backup registers in the RTC chip
  */
 void backup_registers() {
+	uint32_t *registers = (uint32_t *) &config_registers;
+
 	for(int i = 0; i < (sizeof(Config_Registers) / 4); i++) {
-		rtc_write_backup_reg(i, config_registers.reg[i]);
+		rtc_write_backup_reg(i, registers[i]);
 	}
 }
 
@@ -250,15 +252,16 @@ void backup_registers() {
  * backup registers in the RTC chip if the version number matches
  */
 void restore_registers() {
+	uint32_t *registers = (uint32_t *) &config_registers;
 	// read the first register
 	uint32_t first_value;
 	first_value = rtc_read_backup_reg(0);
 	// check the version number first
 	if( (0xFF & first_value) == BACKUP_INIT_VALUE) {
 
-		config_registers.reg[0] = first_value;
+		registers[0] = first_value;
 		for(int i = 1; i < (sizeof(Config_Registers) / 4); i++) {
-			config_registers.reg[i] = rtc_read_backup_reg(i);
+			registers[i] = rtc_read_backup_reg(i);
 		}
 	}
 }

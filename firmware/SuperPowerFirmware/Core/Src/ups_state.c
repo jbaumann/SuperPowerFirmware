@@ -42,44 +42,44 @@ volatile uint8_t ups_state_should_shutdown = shutdown_cause_none;
  */
 void voltage_dependent_state_change(uint16_t seconds_since_last_contact) {
 	// check first whether charger contact is established
-	if (i2c_status_register_8bit->val.charger_contact == true) {
-		if (i2c_status_register_16bit->val.ups_bat_voltage
-				<= i2c_config_register_16bit->val.ups_shutdown_voltage) {
-			if (i2c_status_register_8bit->val.ups_state
+	if (i2c_status_register_8bit->charger_contact == true) {
+		if (i2c_status_register_16bit->ups_bat_voltage
+				<= i2c_config_register_16bit->ups_shutdown_voltage) {
+			if (i2c_status_register_8bit->ups_state
 					< ups_warn_to_shutdown) {
-				i2c_status_register_8bit->val.ups_state = ups_warn_to_shutdown;
+				i2c_status_register_8bit->ups_state = ups_warn_to_shutdown;
 			}
-		} else if (i2c_status_register_16bit->val.ups_bat_voltage
-				<= i2c_config_register_16bit->val.warn_voltage) {
-			if (i2c_status_register_8bit->val.ups_state < ups_warn_state) {
-				i2c_status_register_8bit->val.ups_state = ups_warn_state;
+		} else if (i2c_status_register_16bit->ups_bat_voltage
+				<= i2c_config_register_16bit->warn_voltage) {
+			if (i2c_status_register_8bit->ups_state < ups_warn_state) {
+				i2c_status_register_8bit->ups_state = ups_warn_state;
 				ups_state_should_shutdown |= shutdown_cause_bat_voltage;
 			}
-		} else if (i2c_status_register_16bit->val.ups_bat_voltage
-				<= i2c_config_register_16bit->val.restart_voltage) {
-			if (i2c_status_register_8bit->val.ups_state == ups_unclear_state
+		} else if (i2c_status_register_16bit->ups_bat_voltage
+				<= i2c_config_register_16bit->restart_voltage) {
+			if (i2c_status_register_8bit->ups_state == ups_unclear_state
 					&& seconds_since_last_contact
-							> i2c_config_register_16bit->val.timeout) {
+							> i2c_config_register_16bit->timeout) {
 				// the RPi is not running, even after the timeout, so we assume that it
 				// shut down, this means we come from a WARN_STATE or SHUTDOWN_STATE
-				i2c_status_register_8bit->val.ups_state = ups_warn_state;
+				i2c_status_register_8bit->ups_state = ups_warn_state;
 			}
 		} else { // we are at a safe voltage
 
-			switch (i2c_status_register_8bit->val.ups_state) {
+			switch (i2c_status_register_8bit->ups_state) {
 			case ups_shutdown_state:
-				i2c_status_register_8bit->val.ups_state =
+				i2c_status_register_8bit->ups_state =
 						ups_shutdown_to_running;
 				break;
 			case ups_warn_to_shutdown:
-				i2c_status_register_8bit->val.ups_state =
+				i2c_status_register_8bit->ups_state =
 						ups_shutdown_to_running;
 				break;
 			case ups_warn_state:
-				i2c_status_register_8bit->val.ups_state = ups_warn_to_running;
+				i2c_status_register_8bit->ups_state = ups_warn_to_running;
 				break;
 			case ups_unclear_state:
-				i2c_status_register_8bit->val.ups_state = ups_running_state;
+				i2c_status_register_8bit->ups_state = ups_running_state;
 				break;
 			case ups_running_state:
 			case ups_warn_to_running:
@@ -96,49 +96,49 @@ void voltage_dependent_state_change(uint16_t seconds_since_last_contact) {
 void act_on_state_change() {
 	// This is placed before the general check of all stages as to
 	// not duplicate the code of the shutdown_state
-	if (i2c_status_register_8bit->val.ups_state == ups_warn_to_shutdown) {
+	if (i2c_status_register_8bit->ups_state == ups_warn_to_shutdown) {
 		// immediately turn off the system if force_shutdown is set
-		if (i2c_config_register_8bit->val.primed == 1) {
-			if (i2c_config_register_8bit->val.force_shutdown != 0) {
+		if (i2c_config_register_8bit->primed == 1) {
+			if (i2c_config_register_8bit->force_shutdown != 0) {
 				ups_off();
 				osMessageQueuePut(LED_R_QueueHandle, &background_off, 0, 0);
 			}
 		}
-		i2c_status_register_8bit->val.ups_state = ups_shutdown_state;
+		i2c_status_register_8bit->ups_state = ups_shutdown_state;
 	}
 
-	if (i2c_status_register_8bit->val.ups_state == ups_shutdown_state) {
+	if (i2c_status_register_8bit->ups_state == ups_shutdown_state) {
 		// Nothing to do
-	} else if (i2c_status_register_8bit->val.ups_state == ups_warn_state) {
+	} else if (i2c_status_register_8bit->ups_state == ups_warn_state) {
 		// The RPi has been warned using the should_shutdown variable
 		// we simply let it shutdown even if it does not set SL_INITIATED
 
 		reset_timeout();
-	} else if (i2c_status_register_8bit->val.ups_state
+	} else if (i2c_status_register_8bit->ups_state
 			== ups_shutdown_to_running) {
 		// we have recovered from a shutdown and are now at a safe voltage
-		if (i2c_config_register_8bit->val.primed == 1) {
+		if (i2c_config_register_8bit->primed == 1) {
 			ups_on();
 			osMessageQueuePut(LED_R_QueueHandle, &blink_second_background, 0, 0);
 		}
 		reset_timeout();
-		i2c_status_register_8bit->val.ups_state = ups_running_state;
+		i2c_status_register_8bit->ups_state = ups_running_state;
 		ups_state_should_shutdown = shutdown_cause_none;
-	} else if (i2c_status_register_8bit->val.ups_state == ups_warn_to_running) {
+	} else if (i2c_status_register_8bit->ups_state == ups_warn_to_running) {
 		// we have recovered from a warn state and are now at a safe voltage
 		// we switch to State::running_state and let that state (below) handle
 		// the restart
-		i2c_status_register_8bit->val.ups_state = ups_running_state;
+		i2c_status_register_8bit->ups_state = ups_running_state;
 		ups_state_should_shutdown = shutdown_cause_none;
-	} else if (i2c_status_register_8bit->val.ups_state == ups_unclear_state) {
+	} else if (i2c_status_register_8bit->ups_state == ups_unclear_state) {
 		// we do nothing and wait until either a timeout occurs, the voltage
 		// drops to warn_voltage or is higher than restart_voltage (see handle_state())
 	}
 
-	if (i2c_status_register_8bit->val.ups_state == ups_running_state) {
-		_Bool should_restart = i2c_status_register_16bit->val.seconds > i2c_config_register_16bit->val.timeout;
+	if (i2c_status_register_8bit->ups_state == ups_running_state) {
+		_Bool should_restart = i2c_status_register_16bit->seconds > i2c_config_register_16bit->timeout;
 
-		volatile _Bool reset_i2c_bus = i2c_status_register_16bit->val.seconds > (i2c_config_register_16bit->val.timeout / 2);
+		volatile _Bool reset_i2c_bus = i2c_status_register_16bit->seconds > (i2c_config_register_16bit->timeout / 2);
 
         // reset bus until we get connection again or until time is out
         if (reset_i2c_bus && !(ups_state_should_shutdown & shutdown_cause_i2c_has_been_reset)) {
@@ -148,7 +148,7 @@ void act_on_state_change() {
         }
 
 		if (should_restart) {
-			uint8_t primed = i2c_config_register_8bit->val.primed;
+			uint8_t primed = i2c_config_register_8bit->primed;
 			if (primed != 0
 					|| (primed == 0 && (ups_state_should_shutdown & shutdown_cause_button))) {
 				// RPi has not accessed the I2C interface for more than timeout seconds
@@ -168,7 +168,7 @@ void handle_state() {
 	uint16_t seconds_since_last_contact = (HAL_GetTick() - millis_last_contact)
 			/ 1000;
 
-	i2c_status_register_16bit->val.seconds = seconds_since_last_contact;
+	i2c_status_register_16bit->seconds = seconds_since_last_contact;
 
 	// change the state depending on the current battery voltage
 	voltage_dependent_state_change(seconds_since_last_contact);
@@ -176,12 +176,12 @@ void handle_state() {
 	// If the button has been pressed or the bat_voltage is lower than the warn voltage
 	// we blink the LED 5 times to signal that the RPi should shut down, if it has not
 	// already signalled that it is doing so
-	if (i2c_status_register_8bit->val.ups_state <= ups_warn_state) {
+	if (i2c_status_register_8bit->ups_state <= ups_warn_state) {
 		// we first check whether the Raspberry is already in the shutdown process
 		if (!(ups_state_should_shutdown & shutdown_cause_rpi_initiated)) {
 			if (ups_state_should_shutdown > shutdown_cause_rpi_initiated
 					&& (seconds_since_last_contact
-							< i2c_config_register_16bit->val.timeout)) {
+							< i2c_config_register_16bit->timeout)) {
 				// RPi should take action, possibly shut down. Signal by blinking 5 times
 				osMessageQueuePut(LED_R_QueueHandle, &rpi_shuts_down, 0, 0);
 			}
@@ -197,7 +197,7 @@ void handle_state() {
  * since the reset. In addition we set the I2C register value to 0
  */
 void reset_timeout() {
-	i2c_status_register_16bit->val.seconds = 0;
+	i2c_status_register_16bit->seconds = 0;
 	millis_last_contact = HAL_GetTick();
 	ups_state_should_shutdown &= ~shutdown_cause_i2c_has_been_reset;
 }
@@ -208,8 +208,8 @@ void reset_timeout() {
  */
 void i2c_triggered_ups_state_change() {
 	// If we are in an unclear state, then a communication from the RPi moves us to running state
-	if (i2c_status_register_8bit->val.ups_state == ups_unclear_state) {
-		i2c_status_register_8bit->val.ups_state = ups_running_state;
+	if (i2c_status_register_8bit->ups_state == ups_unclear_state) {
+		i2c_status_register_8bit->ups_state = ups_running_state;
 	}
 	reset_timeout();
 }

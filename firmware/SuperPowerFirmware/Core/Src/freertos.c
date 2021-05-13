@@ -33,6 +33,7 @@
 #include "ch_bq25895.h"
 #include "rtc.h"
 #include "task_communication.h"
+#define U8G2_USE_DYNAMIC_ALLOC
 #include "ups_state.h"
 #include "u8g2.h"
 #include "u8g2_port.h"
@@ -289,6 +290,8 @@ void RTC_Task(void *argument)
 
 uint8_t *buffer;
 uint8_t *bufferDMA;
+
+
 /**
 * @brief Function implementing the StateMachine thread.
 * @param argument: Not used
@@ -315,7 +318,9 @@ void StateMachine_Task(void *argument)
 	buffer = (uint8_t*)pvPortMalloc(32); //buffer used for communication via i2c in this case
 
 
-	u8g2_Setup_ssd1306_i2c_128x32_univision_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+	//u8g2_Setup_ssd1306_i2c_128x32_univision_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+	u8g2_Setup_sh1107_i2c_seeed_128x128_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+
 	u8g2_SetBufferPtr(&u8g2, buf);
 	u8g2_SetI2CAddress(&u8g2, 0x3c);
 	u8g2_InitDisplay(&u8g2);
@@ -329,13 +334,6 @@ void StateMachine_Task(void *argument)
 
 //	u8g2_DrawStr(&u8g2, 10, 10, "T");
 //	u8g2_SendBuffer(&u8g2);
-
-	int cx = 0;
-	int bat_y = 0;
-	int vbus_y = 0;
-	int state_y = 1*19;
-	int should_shutdown_y = 2*19;
-	int seconds_y = 3*19;
 
 	/* Infinite loop */
 	for (;;) {
@@ -355,22 +353,20 @@ void StateMachine_Task(void *argument)
 				uint8_t reg = CH_STATUS;
 				ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
 				if (ret_val == HAL_OK) {
-//					ret_val = HAL_I2C_Master_Receive_IT(&hi2c3, CHARGER_ADDRESS,
-//							i2c_ch_BQ25895_register.reg, sizeof(I2C_CH_BQ25895_Register));
 					// we now use blocking I2C communication since we are the master
-					ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, i2c_ch_BQ25895_register.reg,
+					ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, i2c_ch_BQ25895_register_reg,
 							sizeof(I2C_CH_BQ25895_Register), ch_i2c_master_timeout);
 					if(ret_val == HAL_OK) {
-						i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
-						uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
-						i2c_status_register_16bit->val.ups_bat_voltage = batv;
-						uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
-						i2c_status_register_16bit->val.vbus_voltage = vbus_v;
-						uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
-						i2c_status_register_16bit->val.charge_current = ch_current;
+						i2c_status_register_8bit->charger_status = i2c_ch_BQ25895_register.ch_status;
+						uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.ch_bat_voltage);
+						i2c_status_register_16bit->ups_bat_voltage = batv;
+						uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.ch_vbus_voltage);
+						i2c_status_register_16bit->vbus_voltage = vbus_v;
+						uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.ch_charge_current);
+						i2c_status_register_16bit->charge_current = ch_current;
 
 						// ok, contact has been established, we can use the values
-						i2c_status_register_8bit->val.charger_contact = true;
+						i2c_status_register_8bit->charger_contact = true;
 					}
 
 					get_charger_registers();
@@ -389,28 +385,28 @@ void StateMachine_Task(void *argument)
 		do{
 		u8g2_FirstPage(&u8g2);
 		u8g2_SetFont(&u8g2, u8g2_font_unifont_t_symbols);
-		u8g2_DrawCircle(&u8g2, 70, 20, 8, U8G2_DRAW_ALL);
-		u8g2_DrawStr(&u8g2, 10, 10, "Super Power");
-		u8g2_DrawStr(&u8g2, 10, 25, "Team!!");
-		u8g2_DrawGlyph(&u8g2, 85, 30, 0x2603);
+//		u8g2_DrawCircle(&u8g2, 70, 20, 8, U8G2_DRAW_ALL);
+		u8g2_DrawStr(&u8g2, 32, 10, "12345678");
+		u8g2_DrawStr(&u8g2, 32, 25, "12345678");
+//		u8g2_DrawGlyph(&u8g2, 85, 30, 0x2603);
 		} while(u8g2_NextPage(&u8g2));
 
 
-		if(i2c_status_register_8bit->val.charger_contact) {
+		if(i2c_status_register_8bit->charger_contact) {
 			char buffer[6];
 
-			sprintf(buffer, "%4d", i2c_status_register_16bit->val.ups_bat_voltage);
+			sprintf(buffer, "%4d", i2c_status_register_16bit->ups_bat_voltage);
 			//SSD1306_GotoXY(cx, bat_y);
 			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
 
 			//SSD1306_GotoXY(44, vbus_y);
-			if(i2c_status_register_8bit->val.charger_status & 0x4) {
+			if(i2c_status_register_8bit->charger_status & 0x4) {
 				//SSD1306_Putc('+', &Font_11x18, SSD1306_COLOR_WHITE);
 			} else {
 				//SSD1306_Putc('-', &Font_11x18, SSD1306_COLOR_WHITE);
 			}
 
-			sprintf(buffer, "0x%02x", i2c_status_register_8bit->val.ups_state);
+			sprintf(buffer, "0x%02x", i2c_status_register_8bit->ups_state);
 			//SSD1306_GotoXY(cx, state_y);
 			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
 
@@ -418,7 +414,7 @@ void StateMachine_Task(void *argument)
 			//SSD1306_GotoXY(cx, should_shutdown_y);
 			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
 
-			uint16_t secs = i2c_status_register_16bit->val.seconds;
+			uint16_t secs = i2c_status_register_16bit->seconds;
 			if(secs > 9999) {
 				secs -= 10000;
 			}

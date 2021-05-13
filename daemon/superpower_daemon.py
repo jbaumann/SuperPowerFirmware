@@ -62,6 +62,8 @@ def main(*args):
 
     config = SuperPowerConfig(args.cfgfile)
 
+    config.validate_config()
+
     logging.info("SuperPower Daemon version " + str(major) +
                  "." + str(minor) + "." + str(patch))
 

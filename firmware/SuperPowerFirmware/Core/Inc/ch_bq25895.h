@@ -69,74 +69,73 @@ static const uint8_t CH_CONV_ADC_STOP  = 0b00011101;
  * 0x0B and ending with 0x12, we don't read the others
  */
 
-typedef union {
-	struct _I2C_CH_BQ25895_Register {
-		union {
-			__IO uint8_t reg_0B;
-			__IO uint8_t ch_status;
-			struct {
-				__IO uint8_t status_vsys : 1;
-				__IO uint8_t status_stat : 1;
-				__IO uint8_t status_sdp  : 1;
-				__IO uint8_t status_chrg : 2;
-				__IO uint8_t status_vbus : 3;
-	        };
+typedef struct _I2C_CH_BQ25895_Register {
+	union {
+		__IO uint8_t reg_0B;
+		__IO uint8_t ch_status;
+		struct {
+			__IO uint8_t status_vsys :1;
+			__IO uint8_t status_stat :1;
+			__IO uint8_t status_sdp :1;
+			__IO uint8_t status_chrg :2;
+			__IO uint8_t status_vbus :3;
 		};
-		union {
-			__IO uint8_t reg_0C;
-			__IO uint8_t ch_faults;
-			struct {
-				__IO uint8_t fault_ntc   : 3;
-				__IO uint8_t fault_bat   : 1;
-				__IO uint8_t fault_chrg  : 2;
-				__IO uint8_t fault_boost : 1;
-				__IO uint8_t fault_wdog  : 1;
-			};
+	};
+	union {
+		__IO uint8_t reg_0C;
+		__IO uint8_t ch_faults;
+		struct {
+			__IO uint8_t fault_ntc :3;
+			__IO uint8_t fault_bat :1;
+			__IO uint8_t fault_chrg :2;
+			__IO uint8_t fault_boost :1;
+			__IO uint8_t fault_wdog :1;
 		};
-		union {
-			__IO uint8_t reg_0D;
-			__IO uint8_t ch_vindpm_threshold;
-			struct {
-				__IO uint8_t vindpm_threshold : 7;
-				__IO uint8_t vindpm_force     : 1;
-			};
+	};
+	union {
+		__IO uint8_t reg_0D;
+		__IO uint8_t ch_vindpm_threshold;
+		struct {
+			__IO uint8_t vindpm_threshold :7;
+			__IO uint8_t vindpm_force :1;
 		};
-		union {
-			__IO uint8_t reg_0E;
-			__IO uint8_t ch_bat_voltage;
-			struct {
-				__IO uint8_t bat_voltage            : 7;
-				__IO uint8_t bat_thermal_regulation : 1;
-			};
+	};
+	union {
+		__IO uint8_t reg_0E;
+		__IO uint8_t ch_bat_voltage;
+		struct {
+			__IO uint8_t bat_voltage :7;
+			__IO uint8_t bat_thermal_regulation :1;
 		};
-		union {
-			__IO uint8_t reg_0F;
-			__IO uint8_t ch_sys_voltage;
+	};
+	union {
+		__IO uint8_t reg_0F;
+		__IO uint8_t ch_sys_voltage;
+	};
+	union {
+		__IO uint8_t reg_10;
+		__IO uint8_t ch_ts_voltage;
+	};
+	union {
+		__IO uint8_t reg_11;
+		__IO uint8_t ch_vbus_voltage;
+		struct {
+			__IO uint8_t vbus_voltage :7;
+			__IO uint8_t vbus_good :1;
 		};
-		union {
-			__IO uint8_t reg_10;
-			__IO uint8_t ch_ts_voltage;
-		};
-		union {
-			__IO uint8_t reg_11;
-			__IO uint8_t ch_vbus_voltage;
-			struct {
-				__IO uint8_t vbus_voltage : 7;
-				__IO uint8_t vbus_good    : 1;
-			};
-		};
-		union {
-			__IO uint8_t reg_12;
-			__IO uint8_t ch_charge_current;
-		};
-	} __attribute__((__packed__)) val;
-	uint8_t reg[sizeof(struct _I2C_CH_BQ25895_Register)];
-
-} I2C_CH_BQ25895_Register;
+	};
+	union {
+		__IO uint8_t reg_12;
+		__IO uint8_t ch_charge_current;
+	};
+} __attribute__((__packed__)) I2C_CH_BQ25895_Register;
+//	uint8_t xreg[sizeof(struct _I2C_CH_BQ25895_Register)];
+//} I2C_CH_BQ25895_Register;
 
 /*
  * The actual struct declaration
  */
-I2C_CH_BQ25895_Register i2c_ch_BQ25895_register;
+extern I2C_CH_BQ25895_Register i2c_ch_BQ25895_register;
+extern uint8_t *i2c_ch_BQ25895_register_reg;
 
 #endif /* INC_CH_BQ25895_H_ */

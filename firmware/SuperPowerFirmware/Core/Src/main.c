@@ -100,10 +100,10 @@ int main(void)
   restore_registers();
 
   // TODO RTC Verify that this works
-	if (hrtc.Init.AsynchPrediv != i2c_config_register_8bit->val.rtc_async_prediv
-		|| hrtc.Init.SynchPrediv != i2c_config_register_16bit->val.rtc_sync_prediv) {
-		hrtc.Init.AsynchPrediv = i2c_config_register_8bit->val.rtc_async_prediv;
-		hrtc.Init.SynchPrediv = i2c_config_register_16bit->val.rtc_sync_prediv;
+	if (hrtc.Init.AsynchPrediv != i2c_config_register_8bit->rtc_async_prediv
+		|| hrtc.Init.SynchPrediv != i2c_config_register_16bit->rtc_sync_prediv) {
+		hrtc.Init.AsynchPrediv = i2c_config_register_8bit->rtc_async_prediv;
+		hrtc.Init.SynchPrediv = i2c_config_register_16bit->rtc_sync_prediv;
 		MX_RTC_Init();
 	}
 

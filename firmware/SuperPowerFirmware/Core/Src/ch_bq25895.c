@@ -8,6 +8,9 @@
 #include "main.h"
 #include "ch_bq25895.h"
 
+I2C_CH_BQ25895_Register i2c_ch_BQ25895_register;
+uint8_t *i2c_ch_BQ25895_register_reg = (uint8_t *) &i2c_ch_BQ25895_register;
+
 /*
  * Initialize the BQ25895 charger chip
  */
