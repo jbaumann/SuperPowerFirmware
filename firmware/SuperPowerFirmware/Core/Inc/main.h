@@ -77,6 +77,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 
 void jumpToBootloader();
+void initializeTimerForRunTimeStats();
 /*
 #define debug_print(fmt, ...) \
             do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)

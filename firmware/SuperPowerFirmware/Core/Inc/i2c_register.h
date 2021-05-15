@@ -57,17 +57,12 @@ typedef struct _I2C_Config_Register_8Bit {                // _EXTRACT_I2C_REGIST
 	__IO uint8_t user_button_restart;
 	__IO uint8_t rtc_async_prediv;
 } __attribute__((__packed__)) I2C_Config_Register_8Bit;   // _EXTRACT_I2C_REGISTER_
-//	uint8_t reg[sizeof(struct _I2C_Config_Register_8Bit)];
-//} I2C_Config_Register_8Bit;
 
 typedef struct _I2C_Status_Register_8Bit {                // _EXTRACT_I2C_REGISTER_
 	__IO uint8_t charger_status;
 	__IO uint8_t charger_contact;
 	__IO enum UPS_State ups_state;
 } __attribute__((__packed__)) I2C_Status_Register_8Bit;   // _EXTRACT_I2C_REGISTER_
-//	uint8_t reg[sizeof(struct _I2C_Status_Register_8Bit)];
-//} I2C_Status_Register_8Bit;
-
 
 typedef struct _I2C_Config_Register_16Bit {               // _EXTRACT_I2C_REGISTER_
 	__IO uint16_t timeout;
@@ -75,7 +70,7 @@ typedef struct _I2C_Config_Register_16Bit {               // _EXTRACT_I2C_REGIST
 	__IO uint16_t warn_voltage;
 	__IO uint16_t ups_shutdown_voltage;
 	__IO uint16_t rtc_sync_prediv;
-} __attribute__((__packed__)) I2C_Config_Register_16Bit;  // _EXTRACT_I2C_REGISTER_
+} I2C_Config_Register_16Bit;  // _EXTRACT_I2C_REGISTER_
 
 typedef struct {                                          // _EXTRACT_I2C_REGISTER_
 	__IO uint16_t ups_bat_voltage;
@@ -83,7 +78,7 @@ typedef struct {                                          // _EXTRACT_I2C_REGIST
 	__IO uint16_t vbus_voltage;
 	__IO uint16_t seconds;
 	__IO uint16_t temperature;
-} __attribute__((__packed__)) I2C_Status_Register_16Bit;  // _EXTRACT_I2C_REGISTER_
+}  I2C_Status_Register_16Bit;  // _EXTRACT_I2C_REGISTER_
 
 /*
  * The following struct describes special registers of _arbitrary_ size.

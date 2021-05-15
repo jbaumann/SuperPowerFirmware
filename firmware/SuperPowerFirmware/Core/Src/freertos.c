@@ -37,8 +37,6 @@
 #include "ups_state.h"
 #include "u8g2.h"
 #include "u8g2_port.h"
-#include "ssd1306.h"
-#include "fonts.h"
 #include "rtc.h"
 /* USER CODE END Includes */
 
@@ -255,7 +253,6 @@ void I2C_Task(void *argument)
 	for (;;) {
 		status = osMessageQueueGet(I2C_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
 		if (status == osOK) {
-			debug_print("I2C_Task receive, ");
 			//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		}
 	}
@@ -386,8 +383,30 @@ void StateMachine_Task(void *argument)
 		u8g2_FirstPage(&u8g2);
 		u8g2_SetFont(&u8g2, u8g2_font_unifont_t_symbols);
 //		u8g2_DrawCircle(&u8g2, 70, 20, 8, U8G2_DRAW_ALL);
-		u8g2_DrawStr(&u8g2, 32, 10, "12345678");
-		u8g2_DrawStr(&u8g2, 32, 25, "12345678");
+
+		/* R2
+		 */
+		uint8_t y_step = 11;
+		uint8_t offset_x = 32;
+		uint8_t offset_y = 10;
+		u8g2_DrawStr(&u8g2, offset_x, offset_y, "12345678");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + y_step, "12345678");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + 2*y_step, "12345678");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + 4*y_step, "12345678");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + 6*y_step, "12345678");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + 8*y_step, "12345678");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + 9*y_step, "12345678");
+		/**/
+		/* R1
+		uint8_t y_step = 11;
+		uint8_t offset_x = 0;
+		uint8_t offset_y = 48;
+		u8g2_DrawStr(&u8g2, offset_x, offset_y, "123456789ABCDEFG");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + y_step, "23456789ABCDEF");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + 2*y_step, "3456789ABCDEF");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + 3*y_step, "456789ABCDEF");
+		u8g2_DrawStr(&u8g2, offset_x, offset_y + 4*y_step, "56789ABCDEF");
+		*/
 //		u8g2_DrawGlyph(&u8g2, 85, 30, 0x2603);
 		} while(u8g2_NextPage(&u8g2));
 
