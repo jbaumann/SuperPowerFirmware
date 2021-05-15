@@ -1,7 +1,7 @@
 #MicroXplorer Configuration settings - do not modify
 Mcu.Family=STM32F4
 ProjectManager.MainLocation=Core/Src
-FREERTOS.Queues01=I2C_R_Queue,128,uint16_t,0,Dynamic,NULL,NULL;RTC_R_Queue,16,Task_Data,0,Dynamic,NULL,NULL;Statemachine_R_Queue,16,uint16_t,0,Dynamic,NULL,NULL;LED_R_Queue,16,LED_QueueMsg_t*,0,Dynamic,NULL,NULL;Test_R_Queue,16,Task_Data,0,Dynamic,NULL,NULL
+FREERTOS.Queues01=Display_R_Queue,16,uint16_t,0,Dynamic,NULL,NULL;RTC_R_Queue,16,Task_Data,0,Dynamic,NULL,NULL;Statemachine_R_Queue,16,uint16_t,0,Dynamic,NULL,NULL;LED_R_Queue,16,LED_QueueMsg_t*,0,Dynamic,NULL,NULL;Test_R_Queue,16,Task_Data,0,Dynamic,NULL,NULL
 USART2.IPParameters=VirtualMode
 RCC.CortexFreq_Value=100000000
 Dma.I2C1_TX.1.RequestParameters=Instance,Direction,PeriphInc,MemInc,PeriphDataAlignment,MemDataAlignment,Mode,Priority,FIFOMode
@@ -134,7 +134,7 @@ Dma.I2C1_RX.0.PeriphInc=DMA_PINC_DISABLE
 I2C3.I2C_Mode=I2C_Fast
 ProjectManager.ProjectFileName=SuperPowerFirmware.ioc
 Dma.I2C1_RX.0.MemDataAlignment=DMA_MDATAALIGN_BYTE
-FREERTOS.Tasks01=I2C,24,2048,I2C_Task,Default,NULL,Dynamic,NULL,NULL;RTC,8,2048,RTC_Task,Default,NULL,Dynamic,NULL,NULL;StateMachine,8,2048,StateMachine_Task,Default,NULL,Dynamic,NULL,NULL;LED,8,2048,LED_Task,Default,NULL,Dynamic,NULL,NULL;Test,8,1024,Test_Task,Default,NULL,Dynamic,NULL,NULL
+FREERTOS.Tasks01=Display,24,2048,Display_Task,Default,NULL,Dynamic,NULL,NULL;RTC,8,2048,RTC_Task,Default,NULL,Dynamic,NULL,NULL;StateMachine,8,2048,StateMachine_Task,Default,NULL,Dynamic,NULL,NULL;LED,8,2048,LED_Task,Default,NULL,Dynamic,NULL,NULL;Test,8,1024,Test_Task,Default,NULL,Dynamic,NULL,NULL
 Mcu.PinsNb=20
 ProjectManager.NoMain=false
 PC13-ANTI_TAMP.GPIO_Label=B1 [Blue PushButton]

@@ -33,6 +33,9 @@ Config_Registers config_registers = {
 		// 8 Bit config registers
 		.i2c_config_register_8bit.primed                  =    0,   // 1 if the uC should control the system
 		.i2c_config_register_8bit.force_shutdown          =    0,   // 1 if the uC should shutdown the UPS if the voltage is too low (hard shutdown)
+		.i2c_config_register_8bit.enable_bootloader       =    0,   // 1 if the bootloader functionality is enabled
+		.i2c_config_register_8bit.rtc_async_prediv        =    0,   // the rtc async predivider that can be used to fine tune the rtc
+		.i2c_config_register_8bit.display_type            =    0,   // if !=0 selects type and orientation of the display used
 
 		// 16 Bit config registers
 		.i2c_config_register_16bit.timeout                =  120,   // the timeout for the reset, should cover shutdown and reboot

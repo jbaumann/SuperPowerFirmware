@@ -50,21 +50,21 @@ enum i2c_consts {
 	TASK_COMMUNICATION   = 0xF0,                          // _EXTRACT_I2C_REGISTER_
 };
 
-typedef struct _I2C_Config_Register_8Bit {                // _EXTRACT_I2C_REGISTER_
+typedef struct I2C_Config_Register_8Bit {                 // _EXTRACT_I2C_REGISTER_
 	__IO uint8_t primed;
 	__IO uint8_t force_shutdown;
 	__IO uint8_t enable_bootloader;
-	__IO uint8_t user_button_restart;
 	__IO uint8_t rtc_async_prediv;
+	__IO uint8_t display_type;
 } __attribute__((__packed__)) I2C_Config_Register_8Bit;   // _EXTRACT_I2C_REGISTER_
 
-typedef struct _I2C_Status_Register_8Bit {                // _EXTRACT_I2C_REGISTER_
+typedef struct I2C_Status_Register_8Bit {                 // _EXTRACT_I2C_REGISTER_
 	__IO uint8_t charger_status;
 	__IO uint8_t charger_contact;
 	__IO enum UPS_State ups_state;
 } __attribute__((__packed__)) I2C_Status_Register_8Bit;   // _EXTRACT_I2C_REGISTER_
 
-typedef struct _I2C_Config_Register_16Bit {               // _EXTRACT_I2C_REGISTER_
+typedef struct I2C_Config_Register_16Bit {                // _EXTRACT_I2C_REGISTER_
 	__IO uint16_t timeout;
 	__IO uint16_t restart_voltage;
 	__IO uint16_t warn_voltage;
@@ -72,13 +72,13 @@ typedef struct _I2C_Config_Register_16Bit {               // _EXTRACT_I2C_REGIST
 	__IO uint16_t rtc_sync_prediv;
 } I2C_Config_Register_16Bit;  // _EXTRACT_I2C_REGISTER_
 
-typedef struct {                                          // _EXTRACT_I2C_REGISTER_
+typedef struct I2C_Status_Register_16Bit {                // _EXTRACT_I2C_REGISTER_
 	__IO uint16_t ups_bat_voltage;
 	__IO uint16_t charge_current;
 	__IO uint16_t vbus_voltage;
 	__IO uint16_t seconds;
 	__IO uint16_t temperature;
-}  I2C_Status_Register_16Bit;  // _EXTRACT_I2C_REGISTER_
+} I2C_Status_Register_16Bit;  // _EXTRACT_I2C_REGISTER_
 
 /*
  * The following struct describes special registers of _arbitrary_ size.
@@ -87,7 +87,7 @@ typedef struct {                                          // _EXTRACT_I2C_REGIST
  * The struct will never be instantiated, the transmission size has
  * to be coded by hand. See function HAL_I2C_AddrCallback()
  */
-typedef struct {                                          // _EXTRACT_I2C_REGISTER_
+typedef struct I2C_Special_Register_16Bit {               // _EXTRACT_I2C_REGISTER_
 	__IO uint8_t version;
 	__IO uint8_t should_shutdown;
 	__IO uint8_t write_to_eeprom;
@@ -153,8 +153,8 @@ enum I2C_Register {
 	i2creg_primed                  = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, primed),
 	i2creg_force_shutdown          = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, force_shutdown),
 	i2creg_enable_bootloader       = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, enable_bootloader),
-	i2creg_user_button_restart     = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, user_button_restart),
 	i2creg_rtc_async_prediv        = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, rtc_async_prediv),
+	i2creg_display_type            = CONFIG_8BIT_OFFSET + offsetof(I2C_Config_Register_8Bit, display_type),
 	// I2C_Status_Register_8Bit
 	i2creg_charger_status          = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, charger_status),
 	i2creg_charger_contact         = CONFIG_8BIT_OFFSET + offsetof(I2C_Status_Register_8Bit, charger_contact),

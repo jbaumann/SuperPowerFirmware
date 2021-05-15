@@ -33,11 +33,9 @@
 #include "ch_bq25895.h"
 #include "rtc.h"
 #include "task_communication.h"
-#define U8G2_USE_DYNAMIC_ALLOC
 #include "ups_state.h"
-#include "u8g2.h"
-#include "u8g2_port.h"
 #include "rtc.h"
+#include "display.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,10 +70,10 @@ void get_charger_registers() {
 
 
 /* USER CODE END Variables */
-/* Definitions for I2C */
-osThreadId_t I2CHandle;
-const osThreadAttr_t I2C_attributes = {
-  .name = "I2C",
+/* Definitions for Display */
+osThreadId_t DisplayHandle;
+const osThreadAttr_t Display_attributes = {
+  .name = "Display",
   .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
@@ -107,10 +105,10 @@ const osThreadAttr_t Test_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for I2C_R_Queue */
-osMessageQueueId_t I2C_R_QueueHandle;
-const osMessageQueueAttr_t I2C_R_Queue_attributes = {
-  .name = "I2C_R_Queue"
+/* Definitions for Display_R_Queue */
+osMessageQueueId_t Display_R_QueueHandle;
+const osMessageQueueAttr_t Display_R_Queue_attributes = {
+  .name = "Display_R_Queue"
 };
 /* Definitions for RTC_R_Queue */
 osMessageQueueId_t RTC_R_QueueHandle;
@@ -138,7 +136,7 @@ const osMessageQueueAttr_t Test_R_Queue_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void I2C_Task(void *argument);
+void Display_Task(void *argument);
 void RTC_Task(void *argument);
 void StateMachine_Task(void *argument);
 void LED_Task(void *argument);
@@ -190,8 +188,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
-  /* creation of I2C_R_Queue */
-  I2C_R_QueueHandle = osMessageQueueNew (128, sizeof(uint16_t), &I2C_R_Queue_attributes);
+  /* creation of Display_R_Queue */
+  Display_R_QueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &Display_R_Queue_attributes);
 
   /* creation of RTC_R_Queue */
   RTC_R_QueueHandle = osMessageQueueNew (16, sizeof(Task_Data), &RTC_R_Queue_attributes);
@@ -210,8 +208,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of I2C */
-  I2CHandle = osThreadNew(I2C_Task, NULL, &I2C_attributes);
+  /* creation of Display */
+  DisplayHandle = osThreadNew(Display_Task, NULL, &Display_attributes);
 
   /* creation of RTC */
   RTCHandle = osThreadNew(RTC_Task, NULL, &RTC_attributes);
@@ -235,29 +233,32 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_I2C_Task */
+/* USER CODE BEGIN Header_Display_Task */
+
 /**
-  * @brief  Function implementing the I2C thread.
+  * @brief  Function implementing the Display thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_I2C_Task */
-void I2C_Task(void *argument)
+/* USER CODE END Header_Display_Task */
+void Display_Task(void *argument)
 {
-  /* USER CODE BEGIN I2C_Task */
-	I2C_QueueMsg_t msg;
-	osStatus_t status;
+  /* USER CODE BEGIN Display_Task */
+	uint8_t display_type = i2c_config_register_8bit->display_type;
+	if(display_type != 0 && display_type <= num_display_definitions) {
+		init_display();
+		/* Infinite loop */
+		for (;;) {
+			osStatus_t status;
+			uint16_t msg;
 
-
-	/* Infinite loop */
-	for (;;) {
-		status = osMessageQueueGet(I2C_R_QueueHandle, &msg, NULL, osWaitForever); // wait for message
-		if (status == osOK) {
-			//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			update_display();
+			status = osMessageQueueGet(Display_R_QueueHandle, &msg, NULL, 1000);
 		}
 	}
-	// osDelay(1);
-  /* USER CODE END I2C_Task */
+	// Clean up if no display is configured
+	osThreadExit();
+  /* USER CODE END Display_Task */
 }
 
 /* USER CODE BEGIN Header_RTC_Task */
@@ -285,10 +286,6 @@ void RTC_Task(void *argument)
 
 /* USER CODE BEGIN Header_StateMachine_Task */
 
-uint8_t *buffer;
-uint8_t *bufferDMA;
-
-
 /**
 * @brief Function implementing the StateMachine thread.
 * @param argument: Not used
@@ -298,7 +295,7 @@ uint8_t *bufferDMA;
 /* USER CODE END Header_StateMachine_Task */
 void StateMachine_Task(void *argument)
 {
-
+  /* USER CODE BEGIN StateMachine_Task */
 
 	HAL_StatusTypeDef ret_val;
 
@@ -307,33 +304,9 @@ void StateMachine_Task(void *argument)
  	// on first execution
 	ret_val = ch_init(&hi2c3);
 
-
-	//SSD1306_Init(&hi2c3);
-	static u8g2_t u8g2;
-	uint8_t *buf;
-	buf = (uint8_t*)pvPortMalloc(512);//buffer used as a "matrix" to draw on the display
-	buffer = (uint8_t*)pvPortMalloc(32); //buffer used for communication via i2c in this case
-
-
-	//u8g2_Setup_ssd1306_i2c_128x32_univision_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
-	u8g2_Setup_sh1107_i2c_seeed_128x128_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
-
-	u8g2_SetBufferPtr(&u8g2, buf);
-	u8g2_SetI2CAddress(&u8g2, 0x3c);
-	u8g2_InitDisplay(&u8g2);
-	u8g2_SetPowerSave(&u8g2, 0);
-	u8g2_ClearDisplay(&u8g2);
-
-//	//u8g2_Setup_ssd1306_i2c_128x32_univision_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
-//	u8g2_Setup_sh1107_i2c_64x128_f(&u8g2, U8G2_R2, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
-//	//u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
-//
-
-//	u8g2_DrawStr(&u8g2, 10, 10, "T");
-//	u8g2_SendBuffer(&u8g2);
-
 	/* Infinite loop */
 	for (;;) {
+		uint16_t msg = 0;
 
 		if (hi2c3.State == HAL_I2C_STATE_READY) {
 			get_charger_registers();
@@ -379,71 +352,9 @@ void StateMachine_Task(void *argument)
 			}
 		}
 		handle_state();
-		do{
-		u8g2_FirstPage(&u8g2);
-		u8g2_SetFont(&u8g2, u8g2_font_unifont_t_symbols);
-//		u8g2_DrawCircle(&u8g2, 70, 20, 8, U8G2_DRAW_ALL);
 
-		/* R2
-		 */
-		uint8_t y_step = 11;
-		uint8_t offset_x = 32;
-		uint8_t offset_y = 10;
-		u8g2_DrawStr(&u8g2, offset_x, offset_y, "12345678");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + y_step, "12345678");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + 2*y_step, "12345678");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + 4*y_step, "12345678");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + 6*y_step, "12345678");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + 8*y_step, "12345678");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + 9*y_step, "12345678");
-		/**/
-		/* R1
-		uint8_t y_step = 11;
-		uint8_t offset_x = 0;
-		uint8_t offset_y = 48;
-		u8g2_DrawStr(&u8g2, offset_x, offset_y, "123456789ABCDEFG");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + y_step, "23456789ABCDEF");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + 2*y_step, "3456789ABCDEF");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + 3*y_step, "456789ABCDEF");
-		u8g2_DrawStr(&u8g2, offset_x, offset_y + 4*y_step, "56789ABCDEF");
-		*/
-//		u8g2_DrawGlyph(&u8g2, 85, 30, 0x2603);
-		} while(u8g2_NextPage(&u8g2));
+		osMessageQueuePut(RTC_R_QueueHandle, &msg, 0, 0);
 
-
-		if(i2c_status_register_8bit->charger_contact) {
-			char buffer[6];
-
-			sprintf(buffer, "%4d", i2c_status_register_16bit->ups_bat_voltage);
-			//SSD1306_GotoXY(cx, bat_y);
-			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
-
-			//SSD1306_GotoXY(44, vbus_y);
-			if(i2c_status_register_8bit->charger_status & 0x4) {
-				//SSD1306_Putc('+', &Font_11x18, SSD1306_COLOR_WHITE);
-			} else {
-				//SSD1306_Putc('-', &Font_11x18, SSD1306_COLOR_WHITE);
-			}
-
-			sprintf(buffer, "0x%02x", i2c_status_register_8bit->ups_state);
-			//SSD1306_GotoXY(cx, state_y);
-			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
-
-			sprintf(buffer, "0x%02x", ups_state_should_shutdown);
-			//SSD1306_GotoXY(cx, should_shutdown_y);
-			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
-
-			uint16_t secs = i2c_status_register_16bit->seconds;
-			if(secs > 9999) {
-				secs -= 10000;
-			}
-			sprintf(buffer, "%05d", secs);
-			//SSD1306_GotoXY(cx, seconds_y);
-			//SSD1306_Puts(buffer, &Font_11x18, SSD1306_COLOR_WHITE);
-
-			//SSD1306_UpdateScreen();
-		}
-		// TODO Remove comment
 		//osDelay(ups_update_interval);
 
 	}
