@@ -12,6 +12,7 @@ static const uint16_t ups_update_interval    = 10000;  // update interval for th
 
 #define bit(b) (1UL << (b))
 
+uint16_t calc_seconds_since_last_contact();
 void i2c_triggered_ups_state_change();
 void handle_state() ;
 void reset_timeout();

@@ -12,7 +12,7 @@
 #include "u8g2.h"
 #include "i2c.h"
 
-extern uint8_t *buffer;
+extern uint8_t *i2c_buffer;
 
 uint8_t u8x8_stm32_gpio_and_delay(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr){
   switch (msg)
@@ -46,7 +46,7 @@ uint8_t u8x8_byte_stm32_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void 
       data = (uint8_t *)arg_ptr;
       while( arg_int > 0 )
 	{
-	  buffer[buf_idx++] = *data;
+	  i2c_buffer[buf_idx++] = *data;
 	  data++;
 	  arg_int--;
 	}
@@ -61,7 +61,7 @@ uint8_t u8x8_byte_stm32_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void 
       buf_idx = 0;
       break;
     case U8X8_MSG_BYTE_END_TRANSFER:
-      res = HAL_I2C_Master_Transmit(&hi2c3, u8x8_GetI2CAddress(u8x8) << 1, buffer, buf_idx, 100);
+      res = HAL_I2C_Master_Transmit(&hi2c3, u8x8_GetI2CAddress(u8x8) << 1, i2c_buffer, buf_idx, 100);
       res = (res == HAL_OK) ? 1 : 0;
       break;
     default:

@@ -362,7 +362,7 @@ void StateMachine_Task(void *argument)
 
 		osMessageQueuePut(Display_R_QueueHandle, &msg, 0, 0);
 
-		//osDelay(ups_update_interval);
+		osDelay(ups_update_interval);
 
 	}
   /* USER CODE END StateMachine_Task */
