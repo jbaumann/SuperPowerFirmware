@@ -20,8 +20,15 @@ uint8_t *bufferDMA;
 u8g2_t u8g2;
 
 //TODO Find another way to reference these registers without exposing them to the general code
-extern I2C_Status_Register_16Bit _status_register_16_bit;
+extern I2C_Status_Register_16Bit _status_register_16bit;
 extern I2C_Status_Register_8Bit _status_register_8bit;
+
+enum Display_Line_Types {
+	dlt_8bit = 1,
+	dlt_16bit = 2,
+	dlt_glyph = 0x80,
+	dlt_function = 0xFF,
+};
 
 typedef struct Display_Line {
 	uint8_t x, y;
@@ -59,12 +66,12 @@ Display_Definition ada_feather_r1 = {
 		{ .x = 64, .y = 48, .string = "VP", .v_ptr = NULL, },
 		{ .x = 0, .y = 48 + 1*12, .string = "St", .v_ptr = NULL, },
 		{ .x = 64, .y = 48 + 1*12, .string = "Sht", .v_ptr = NULL, },
-		{ .x = 0, .y = 48 + 3*12, .value = 0x23F1, .type = 0x80 },
-		{ .x = 24, .y = 48, .string = "%4d", .v_ptr = &(_status_register_16_bit.ups_bat_voltage), .type = 2 },
-		{ .x = 64+32, .y = 48, .string = "%4d", .v_ptr = &(_status_register_16_bit.vbus_voltage), .type = 2 },
-		{ .x = 24, .y = 48 + 1*12, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = 1 },
-		{ .x = 64+32, .y = 48 + 1*12, .string = "0x%02x", .v_ptr = &(ups_state_should_shutdown), .type = 1 },
-		{ .x = 24, .y = 48 + 3*12, .v_ptr = &print_seconds_since_last_contact, .type = 0xFF },
+		{ .x = 0, .y = 48 + 3*12, .value = 0x23F1, .type = dlt_glyph },
+		{ .x = 24, .y = 48, .string = "%4d", .v_ptr = &(_status_register_16bit.ups_bat_voltage), .type = dlt_16bit },
+		{ .x = 64+32, .y = 48, .string = "%4d", .v_ptr = &(_status_register_16bit.vbus_voltage), .type = dlt_16bit },
+		{ .x = 24, .y = 48 + 1*12, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = dlt_8bit },
+		{ .x = 64+32, .y = 48 + 1*12, .string = "0x%02x", .v_ptr = &(ups_state_should_shutdown), .type = dlt_8bit },
+		{ .x = 24, .y = 48 + 3*12, .v_ptr = &print_seconds_since_last_contact, .type = dlt_function },
 	},
 	.num_lines = 10,
 };
@@ -81,12 +88,12 @@ Display_Definition ada_feather_r2 = {
 		{ .x = 32, .y = 10 + 2*12, .string = "V USB", .v_ptr = NULL, },
 		{ .x = 32, .y = 10 + 4*12, .string = "State", .v_ptr = NULL, },
 		{ .x = 32, .y = 10 + 6*12, .string = "Shld Sht", .v_ptr = NULL, },
-		{ .x = 32, .y = 10 + 9*12, .value = 0x23F1, .type = 0x80 },
-		{ .x = 32, .y = 10 + 1*12, .string = "%4d", .v_ptr = &(_status_register_16_bit.ups_bat_voltage), .type = 2 },
-		{ .x = 32, .y = 10 + 3*12, .string = "%4d", .v_ptr = &(_status_register_16_bit.vbus_voltage), .type = 2 },
-		{ .x = 32, .y = 10 + 5*12, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = 1 },
-		{ .x = 32, .y = 10 + 7*12, .string = "0x%02x", .v_ptr = &(ups_state_should_shutdown), .type = 1 },
-		{ .x = 32 + 24, .y = 10 + 9*12, .v_ptr = &print_seconds_since_last_contact, .type = 0xFF },
+		{ .x = 32, .y = 10 + 9*12, .value = 0x23F1, .type = dlt_glyph },
+		{ .x = 32, .y = 10 + 1*12, .string = "%4d", .v_ptr = &(_status_register_16bit.ups_bat_voltage), .type = dlt_16bit },
+		{ .x = 32, .y = 10 + 3*12, .string = "%4d", .v_ptr = &(_status_register_16bit.vbus_voltage), .type = dlt_16bit },
+		{ .x = 32, .y = 10 + 5*12, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = dlt_8bit },
+		{ .x = 32, .y = 10 + 7*12, .string = "0x%02x", .v_ptr = &(ups_state_should_shutdown), .type = dlt_8bit },
+		{ .x = 32 + 24, .y = 10 + 9*12, .v_ptr = &print_seconds_since_last_contact, .type = dlt_function },
 	},
 	.num_lines = 10,
 };

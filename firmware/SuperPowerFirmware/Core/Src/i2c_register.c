@@ -19,8 +19,8 @@ uint16_t *i2c_config_register_16bit_reg = (uint16_t *) &(config_registers.i2c_co
 I2C_Status_Register_8Bit  _status_register_8bit, *i2c_status_register_8bit = &_status_register_8bit;
 uint8_t  *i2c_status_register_8bit_reg = (uint8_t *) &_status_register_8bit;
 
-I2C_Status_Register_16Bit _status_register_16_bit, *i2c_status_register_16bit = &_status_register_16_bit;
-uint16_t *i2c_status_register_16bit_reg  = (uint16_t *) &_status_register_16_bit;
+I2C_Status_Register_16Bit _status_register_16bit, *i2c_status_register_16bit = &_status_register_16bit;
+uint16_t *i2c_status_register_16bit_reg  = (uint16_t *) &_status_register_16bit;
 
 /*
  * Initialization of the register structures
