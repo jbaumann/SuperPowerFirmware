@@ -26,7 +26,10 @@ extern I2C_Status_Register_8Bit _status_register_8bit;
 typedef struct Display_Line {
 	uint8_t x, y;
 	char *string;
-	__IO void *value;
+	union {
+		__IO void *v_ptr;
+		__IO uint32_t value;
+	};
 	uint8_t type;
 } Display_Line;
 
@@ -52,17 +55,16 @@ Display_Definition ada_feather_r1 = {
 	.address = 0x3c,
 	.init_function = &ada_feather_r1_init,
 	.lines = {
-		{ .x = 0, .y = 48, .string = "VB", .value = NULL, },
-		{ .x = 64, .y = 48, .string = "VP", .value = NULL, },
-		{ .x = 0, .y = 48 + 1*12, .string = "St", .value = NULL, },
-		{ .x = 64, .y = 48 + 1*12, .string = "Sht", .value = NULL, },
-		{ .x = 0, .y = 48 + 2*12, .string = "Seconds", .value = NULL, },
-		{ .x = 24, .y = 48, .string = "%4d", .value = &(_status_register_16_bit.ups_bat_voltage), .type = 2 },
-		{ .x = 64+32, .y = 48, .string = "%4d", .value = &(_status_register_16_bit.vbus_voltage), .type = 2 },
-		{ .x = 24, .y = 48 + 1*12, .string = "0x%02x", .value = &(_status_register_8bit.ups_state), .type = 1 },
-		{ .x = 64+32, .y = 48 + 1*12, .string = "0x%02x", .value = &(ups_state_should_shutdown), .type = 1 },
-//		{ .x = 64, .y = 48 + 2*12, .string = "%05d", .value = &(_status_register_16_bit.seconds), .type = 2 },
-		{ .x = 64, .y = 48 + 2*12, .value = &print_seconds_since_last_contact, .type = 0xFF },
+		{ .x = 0, .y = 48, .string = "VB", .v_ptr = NULL, },
+		{ .x = 64, .y = 48, .string = "VP", .v_ptr = NULL, },
+		{ .x = 0, .y = 48 + 1*12, .string = "St", .v_ptr = NULL, },
+		{ .x = 64, .y = 48 + 1*12, .string = "Sht", .v_ptr = NULL, },
+		{ .x = 0, .y = 48 + 3*12, .value = 0x23F1, .type = 0x80 },
+		{ .x = 24, .y = 48, .string = "%4d", .v_ptr = &(_status_register_16_bit.ups_bat_voltage), .type = 2 },
+		{ .x = 64+32, .y = 48, .string = "%4d", .v_ptr = &(_status_register_16_bit.vbus_voltage), .type = 2 },
+		{ .x = 24, .y = 48 + 1*12, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = 1 },
+		{ .x = 64+32, .y = 48 + 1*12, .string = "0x%02x", .v_ptr = &(ups_state_should_shutdown), .type = 1 },
+		{ .x = 24, .y = 48 + 3*12, .v_ptr = &print_seconds_since_last_contact, .type = 0xFF },
 	},
 	.num_lines = 10,
 };
@@ -75,17 +77,16 @@ Display_Definition ada_feather_r2 = {
 	.address = 0x3c,
 	.init_function = &ada_feather_r2_init,
 	.lines = {
-		{ .x = 32, .y = 10, .string = "V Bat", .value = NULL, },
-		{ .x = 32, .y = 10 + 2*12, .string = "V USB", .value = NULL, },
-		{ .x = 32, .y = 10 + 4*12, .string = "State", .value = NULL, },
-		{ .x = 32, .y = 10 + 6*12, .string = "Shld Sht", .value = NULL, },
-		{ .x = 32, .y = 10 + 8*12, .string = "Seconds", .value = NULL, },
-		{ .x = 32, .y = 10 + 1*12, .string = "%4d", .value = &(_status_register_16_bit.ups_bat_voltage), .type = 2 },
-		{ .x = 32, .y = 10 + 3*12, .string = "%4d", .value = &(_status_register_16_bit.vbus_voltage), .type = 2 },
-		{ .x = 32, .y = 10 + 5*12, .string = "0x%02x", .value = &(_status_register_8bit.ups_state), .type = 1 },
-		{ .x = 32, .y = 10 + 7*12, .string = "0x%02x", .value = &(ups_state_should_shutdown), .type = 1 },
-//		{ .x = 32, .y = 10 + 9*12, .string = "%05d", .value = &(_status_register_16_bit.seconds), .type = 2 },
-		{ .x = 32, .y = 10 + 9*12, .value = &print_seconds_since_last_contact, .type = 0xFF },
+		{ .x = 32, .y = 10, .string = "V Bat", .v_ptr = NULL, },
+		{ .x = 32, .y = 10 + 2*12, .string = "V USB", .v_ptr = NULL, },
+		{ .x = 32, .y = 10 + 4*12, .string = "State", .v_ptr = NULL, },
+		{ .x = 32, .y = 10 + 6*12, .string = "Shld Sht", .v_ptr = NULL, },
+		{ .x = 32, .y = 10 + 9*12, .value = 0x23F1, .type = 0x80 },
+		{ .x = 32, .y = 10 + 1*12, .string = "%4d", .v_ptr = &(_status_register_16_bit.ups_bat_voltage), .type = 2 },
+		{ .x = 32, .y = 10 + 3*12, .string = "%4d", .v_ptr = &(_status_register_16_bit.vbus_voltage), .type = 2 },
+		{ .x = 32, .y = 10 + 5*12, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = 1 },
+		{ .x = 32, .y = 10 + 7*12, .string = "0x%02x", .v_ptr = &(ups_state_should_shutdown), .type = 1 },
+		{ .x = 32 + 24, .y = 10 + 9*12, .v_ptr = &print_seconds_since_last_contact, .type = 0xFF },
 	},
 	.num_lines = 10,
 };
@@ -129,25 +130,25 @@ void update_display() {
 
 				for (uint8_t l = 0; l < display->num_lines; l++) {
 					Display_Line line = display->lines[l];
-					if (line.value == NULL) {
+					if (line.v_ptr == NULL) {
 						u8g2_DrawStr(&u8g2, line.x, line.y, line.string);
 					} else {
 						if(line.type < 0x80) {
 							// we have a value that can be converted to a string
 							char buffer[6];
 							if(line.type == 1) {
-								sprintf(buffer, line.string, *((uint8_t *)line.value));
+								sprintf(buffer, line.string, *((uint8_t *)line.v_ptr));
 							} else if(line.type == 2) {
-								sprintf(buffer, line.string, *((uint16_t *)line.value));
+								sprintf(buffer, line.string, *((uint16_t *)line.v_ptr));
 							}
 							u8g2_DrawStr(&u8g2, line.x, line.y, buffer);
 						} else {
 							if(line.type == 0x80) {
 								// Glyph
-								u8g2_DrawGlyph(&u8g2, line.x, line.y, *((uint16_t *)line.value));
+								u8g2_DrawGlyph(&u8g2, line.x, line.y, line.value);
 							} else if(line.type == 0xFF) {
 								// function
-								char * (*my_function)(void) = line.value;
+								char * (*my_function)(void) = line.v_ptr;
 								char *buffer = (*my_function)();
 								u8g2_DrawStr(&u8g2, line.x, line.y, buffer);
 							}
