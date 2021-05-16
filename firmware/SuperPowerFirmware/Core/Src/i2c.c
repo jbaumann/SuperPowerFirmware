@@ -472,6 +472,11 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 		// be de-initialized first
 		//MX_RTC_Init();
 	}
+	if(register_number == i2creg_display_type) {
+		// re-initialize
+		uint16_t msg = 1;
+		osMessageQueuePut(Display_R_QueueHandle, &msg, 0, 0);
+	}
 }
 
 /*

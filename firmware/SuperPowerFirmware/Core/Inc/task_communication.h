@@ -22,7 +22,7 @@ enum task_communication_consts {
 /*
  * The external declarations for all Queue handles and callback functions
  */
-osMessageQueueId_t I2C_R_QueueHandle;
+osMessageQueueId_t Display_R_QueueHandle;
 osMessageQueueId_t LED_R_QueueHandle;
 osMessageQueueId_t RTC_R_QueueHandle;
 osMessageQueueId_t Test_R_QueueHandle;

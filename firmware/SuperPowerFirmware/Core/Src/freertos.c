@@ -244,22 +244,29 @@ void MX_FREERTOS_Init(void) {
 void Display_Task(void *argument)
 {
   /* USER CODE BEGIN Display_Task */
-	uint8_t display_type = i2c_config_register_8bit->display_type;
-	if(display_type != 0 && display_type <= num_display_definitions) {
-		init_display();
-		/* Infinite loop */
-		for (;;) {
-			osStatus_t status;
-			uint16_t msg;
+	uint16_t re_init = 1;  // 1 signals initialization necessary
+
+	/* Infinite loop */
+	for (;;) {
+		osStatus_t status;
+		uint8_t display_type = i2c_config_register_8bit->display_type;
+
+		if (display_type != 0 && display_type <= num_display_definitions) {
+
+			if(re_init == 1) {
+				re_init = 0;
+				init_display();
+			}
 
 			update_display();
-			status = osMessageQueueGet(Display_R_QueueHandle, &msg, NULL, 1000);
+			status = osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, 1000);
+		} else {
+			status = osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, osWaitForever);
 		}
 	}
-	// Clean up if no display is configured
-	osThreadExit();
   /* USER CODE END Display_Task */
 }
+
 
 /* USER CODE BEGIN Header_RTC_Task */
 /**
@@ -353,7 +360,7 @@ void StateMachine_Task(void *argument)
 		}
 		handle_state();
 
-		osMessageQueuePut(RTC_R_QueueHandle, &msg, 0, 0);
+		osMessageQueuePut(Display_R_QueueHandle, &msg, 0, 0);
 
 		//osDelay(ups_update_interval);
 

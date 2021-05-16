@@ -14,9 +14,10 @@
 #include "i2c_register.h"
 #include "ups_state.h"
 
-uint8_t *buffer;
+uint8_t *buf = NULL;
+uint8_t *buffer = NULL;
 uint8_t *bufferDMA;
-static u8g2_t u8g2;
+u8g2_t u8g2;
 extern I2C_Status_Register_16Bit _status_register_16_bit;
 extern I2C_Status_Register_8Bit _status_register_8bit;
 
@@ -86,13 +87,13 @@ uint8_t num_display_definitions = sizeof(display_definitions)/sizeof(Display_Def
 
 
 void init_display() {
-	uint8_t display_type = i2c_config_register_8bit->display_type;
+	volatile uint8_t display_type = i2c_config_register_8bit->display_type;
 	if(display_type != 0 && display_type <= num_display_definitions) {
 		Display_Definition *display = display_definitions[display_type-1];
-
-		uint8_t *buf;
-		buf = (uint8_t*) pvPortMalloc(512); //buffer used as a "matrix" to draw on the display
-		buffer = (uint8_t*) pvPortMalloc(32); //buffer used for communication via i2c in this case
+		if(buf == NULL) {
+			buf = (uint8_t*) pvPortMalloc(512); //buffer used as a "matrix" to draw on the display
+			buffer = (uint8_t*) pvPortMalloc(32); //buffer used for communication via i2c in this case
+		}
 
 		(*display->init_function)();
 
@@ -105,7 +106,7 @@ void init_display() {
 }
 
 void update_display() {
-	uint8_t display_type = i2c_config_register_8bit->display_type;
+	volatile uint8_t display_type = i2c_config_register_8bit->display_type;
 	if(display_type != 0 && display_type <= num_display_definitions) {
 		Display_Definition *display = display_definitions[display_type-1];
 
