@@ -8,8 +8,9 @@
 #ifndef INC_DISPLAY_H_
 #define INC_DISPLAY_H_
 
-void init_display();
-void update_display();
+void init_display(uint8_t display_type);
+void deinit_display();
+void update_display(uint8_t display_type);
 
 extern uint8_t num_display_definitions;
 

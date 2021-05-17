@@ -248,20 +248,24 @@ void Display_Task(void *argument)
 
 	/* Infinite loop */
 	for (;;) {
-		osStatus_t status;
 		uint8_t display_type = i2c_config_register_8bit->display_type;
-
-		if (display_type != 0 && display_type <= num_display_definitions) {
+		if(display_type == 0) {
+			// this frees the memory allocated by the display buffers
+			if(re_init == 1) {
+				re_init = 0;
+				deinit_display();
+			}
+		} else if (display_type <= num_display_definitions) {
 
 			if(re_init == 1) {
 				re_init = 0;
-				init_display();
+				init_display(display_type);
 			}
 
-			update_display();
-			status = osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, 1000);
+			update_display(display_type);
+			osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, 1000);
 		} else {
-			status = osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, osWaitForever);
+			osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, osWaitForever);
 		}
 	}
   /* USER CODE END Display_Task */
