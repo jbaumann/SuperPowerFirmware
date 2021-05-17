@@ -174,6 +174,31 @@ Display_Definition ada_feather_portrait = {
 	.num_lines = 10,
 };
 
+
+void ssd1306_noname_landscape_init() {
+	u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0,
+				u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+}
+Display_Definition ssd1306_noname_landscape = {
+	.address = 0x3c,
+	.init_function = &ssd1306_noname_landscape_init,
+	.font = u8g2_font_unifont_h_symbols,
+	.lines = {
+		{ .x = 0, .y = 14, .string = "VB", .type = dlt_string, },
+
+		{ .x = 64, .y = 14, .string = "VP", .type = dlt_string, },
+		{ .x = 0, .y = 14 + 1*14, .string = "St", .type = dlt_string, },
+		{ .x = 64, .y = 14 + 1*14, .string = "Sht", .type = dlt_string, },
+		{ .x = 0, .y = 14 + 3*14, .value = 0x23F1, .type = dlt_glyph },
+		{ .x = 24, .y = 14, .string = "%4d", .v_ptr = &(_status_register_16bit.ups_bat_voltage), .type = dlt_16bit },
+		{ .x = 64+32, .y = 14, .string = "%4d", .v_ptr = &(_status_register_16bit.vbus_voltage), .type = dlt_16bit },
+		{ .x = 24, .y = 14 + 1*14, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = dlt_8bit },
+		{ .x = 64+32, .y = 14 + 1*14, .string = "0x%02x", .v_ptr = &(ups_state_should_shutdown), .type = dlt_8bit },
+		{ .x = 24, .y = 14 + 3*14, .v_ptr = &print_seconds_since_last_contact, .type = dlt_function },
+	},
+	.num_lines = 10,
+};
+
 /*
  * The array display_definitions contains available display definitions. The configuration
  * option "display type" is used to select the current display configuration.
@@ -183,6 +208,7 @@ Display_Definition ada_feather_portrait = {
 Display_Definition *display_definitions[] = {
 		&ada_feather_landscape,
 		&ada_feather_portrait,
+		&ssd1306_noname_landscape,
 };
 uint8_t num_display_definitions = sizeof(display_definitions)/sizeof(Display_Definition *);
 
