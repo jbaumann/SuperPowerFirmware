@@ -164,7 +164,6 @@ Display_Definition ada_feather_portrait = {
 		{ .x = 32, .y = 10 + 4*14, .string = "State", .type = dlt_string, },
 		{ .x = 32, .y = 10 + 6*14, .string = "Shld Sht", .type = dlt_string, },
 		{ .x = 32, .y = 10 + 8*14, .value = 0x23F1, .type = dlt_glyph },
-
 		{ .x = 32, .y = 10 + 1*14, .string = "%4d", .v_ptr = &(_status_register_16bit.ups_bat_voltage), .type = dlt_16bit },
 		{ .x = 32, .y = 10 + 3*14, .string = "%4d", .v_ptr = &(_status_register_16bit.vbus_voltage), .type = dlt_16bit },
 		{ .x = 32, .y = 10 + 5*14, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = dlt_8bit },
@@ -174,7 +173,16 @@ Display_Definition ada_feather_portrait = {
 	.num_lines = 10,
 };
 
-
+/*
+ * This is the definition for a noname SSD1306 OLED 128x64 in landscape mode.
+ * We start with the init function which sets up the landscape mode (orientation R0).
+ * Then follows the display definition with address, reference to the init function,
+ * used font and displayed lines. Last comes the number of lines. It is important to
+ * set this to the correct value.
+ * The order of lines is irrelevant, but since later lines will be rendered over earlier
+ * ones if the use the same screen space rendering the changing values last makes
+ * correcting errors easier.
+ */
 void ssd1306_noname_landscape_init() {
 	u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0,
 				u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
@@ -185,7 +193,6 @@ Display_Definition ssd1306_noname_landscape = {
 	.font = u8g2_font_unifont_h_symbols,
 	.lines = {
 		{ .x = 0, .y = 14, .string = "VB", .type = dlt_string, },
-
 		{ .x = 64, .y = 14, .string = "VP", .type = dlt_string, },
 		{ .x = 0, .y = 14 + 1*14, .string = "St", .type = dlt_string, },
 		{ .x = 64, .y = 14 + 1*14, .string = "Sht", .type = dlt_string, },
@@ -200,6 +207,39 @@ Display_Definition ssd1306_noname_landscape = {
 };
 
 /*
+ * This is the definition for a noname SSD1306 OLED 128x64 in landscape mode.
+ * We start with the init function which sets up the landscape mode (orientation R1).
+ * Then follows the display definition with address, reference to the init function,
+ * used font and displayed lines. Last comes the number of lines. It is important to
+ * set this to the correct value.
+ * The order of lines is irrelevant, but since later lines will be rendered over earlier
+ * ones if the use the same screen space rendering the changing values last makes
+ * correcting errors easier.
+ */
+void ssd1306_noname_portrait_init() {
+	u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R1,
+				u8x8_byte_stm32_hw_i2c, u8x8_stm32_gpio_and_delay);
+}
+Display_Definition ssd1306_noname_portrait = {
+	.address = 0x3c,
+	.init_function = &ssd1306_noname_portrait_init,
+	.font = u8g2_font_unifont_h_symbols,
+	.lines = {
+		{ .x = 0, .y = 10, .string = "V Bat", .type = dlt_string, },
+		{ .x = 0, .y = 10 + 2*14, .string = "V USB", .type = dlt_string, },
+		{ .x = 0, .y = 10 + 4*14, .string = "State", .type = dlt_string, },
+		{ .x = 0, .y = 10 + 6*14, .string = "Shld Sht", .type = dlt_string, },
+		{ .x = 0, .y = 10 + 8*14, .value = 0x23F1, .type = dlt_glyph },
+		{ .x = 0, .y = 10 + 1*14, .string = "%4d", .v_ptr = &(_status_register_16bit.ups_bat_voltage), .type = dlt_16bit },
+		{ .x = 0, .y = 10 + 3*14, .string = "%4d", .v_ptr = &(_status_register_16bit.vbus_voltage), .type = dlt_16bit },
+		{ .x = 0, .y = 10 + 5*14, .string = "0x%02x", .v_ptr = &(_status_register_8bit.ups_state), .type = dlt_8bit },
+		{ .x = 0, .y = 10 + 7*14, .string = "0x%02x", .v_ptr = &(ups_state_should_shutdown), .type = dlt_8bit },
+		{ .x = 0 + 24, .y = 10 + 8*14, .v_ptr = &print_seconds_since_last_contact, .type = dlt_function },
+	},
+	.num_lines = 10,
+};
+
+/*
  * The array display_definitions contains available display definitions. The configuration
  * option "display type" is used to select the current display configuration.
  * If "display type" is 0 then no display configuration is used.
@@ -209,6 +249,7 @@ Display_Definition *display_definitions[] = {
 		&ada_feather_landscape,
 		&ada_feather_portrait,
 		&ssd1306_noname_landscape,
+		&ssd1306_noname_portrait,
 };
 uint8_t num_display_definitions = sizeof(display_definitions)/sizeof(Display_Definition *);
 
