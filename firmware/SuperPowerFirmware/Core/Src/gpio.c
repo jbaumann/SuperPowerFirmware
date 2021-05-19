@@ -95,6 +95,10 @@ void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 2 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	/*
+	 * TODO Remove the following code and the pin configuration in the
+	 * .ioc file
+	 *
 	// This is either the blue button on the Nucleo board
 	// or the GPIO5/pin 29 on the RPi
 	if (GPIO_Pin == B1_Pin) {
@@ -107,24 +111,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			// Raspberry signals shutdown?
 		}
 	}
+	*/
+
 	// The user button can be pressed to restart the RPi if turned off
 	// or to signal an action if it is running
 	if (GPIO_Pin == User_Button_Pin) {
-
-		/*
-		uint8_t should_restart = i2c_status_register_16bit->val.seconds
-				> i2c_config_register_16bit->val.timeout;
-		should_restart = should_restart && i2c_config_register_8bit->val.user_button_restart;
-
-		if (should_restart && i2c_config_register_8bit->val.primed == 0) {
-			i2c_config_register_8bit->val.primed = 2;
-			// could be set during the shutdown while the timeout has not yet been exceeded. We reset it.
-			ups_state_should_shutdown = shutdown_cause_none;
-		} else {
-			// signal the Raspberry that the button has been pressed.
-			ups_state_should_shutdown |= shutdown_cause_button;
-		}
-		*/
 		ups_state_should_shutdown |= shutdown_cause_button;
 	}
 }

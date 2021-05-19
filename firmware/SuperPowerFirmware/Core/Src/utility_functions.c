@@ -66,7 +66,12 @@ int _write(int fd, char *ptr, int len) {
 		return EIO;
 }
 
+/* The following definitions allow us to collect additional runtimer information
+ * from FreeRTOS.
+ */
+
 #ifdef FREERTOS_TOTAL_RUNTIME_TIMER
+
 /*
 * by default the timer 10 is used to measure the run time percentage of each task
 * TIM_HandleTypeDef htim10;

@@ -3,10 +3,7 @@
  *
  *  Created on: Dec 25, 2020
  *      Author: hector
- */
-
-
-/*
+ *
  * Since at least FreeRTOS V7.5.3 uxTopUsedPriority is no longer
  * present in the kernel, so it has to be supplied by other means for
  * OpenOCD's threads awareness.

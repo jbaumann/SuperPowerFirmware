@@ -27,7 +27,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
-
 #include <string.h>
 #include "i2c.h"
 #include "ch_bq25895.h"
@@ -55,19 +54,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-uint8_t registers[10];
-void get_charger_registers() {
-	HAL_StatusTypeDef ret_val;
-	uint8_t reg = 0;
-	ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1,
-			ch_i2c_master_timeout);
-	if (ret_val == HAL_OK) {
-		ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, registers,
-				sizeof(registers), ch_i2c_master_timeout);
-	}
-}
-
-
 
 /* USER CODE END Variables */
 /* Definitions for Display */
@@ -236,7 +222,10 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE BEGIN Header_Display_Task */
 
 /**
-  * @brief  Function implementing the Display thread.
+  * @brief  Function implementing the Display thread. This thread is responsible for
+  * the communication with a OLED display connected to the Qwiic connector. The
+  * display type itself is defined in the source file display.c.
+  * If a valid display type is set then the display is updated every second.
   * @param  argument: Not used
   * @retval None
   */
@@ -244,28 +233,31 @@ void MX_FREERTOS_Init(void) {
 void Display_Task(void *argument)
 {
   /* USER CODE BEGIN Display_Task */
-	uint16_t re_init = 1;  // 1 signals initialization necessary
+	uint16_t re_init = (i2c_config_register_8bit->display_type != 0);  // 1 signals initialization necessary
 
 	/* Infinite loop */
 	for (;;) {
 		uint8_t display_type = i2c_config_register_8bit->display_type;
-		if(display_type == 0) {
-			// this frees the memory allocated by the display buffers
+		if(display_type == 0 || display_type > num_display_definitions) {
 			if(re_init == 1) {
+				// this frees the memory allocated by the display buffers
+				// if we switched from an actual display type to 0
 				re_init = 0;
 				deinit_display();
 			}
-		} else if (display_type <= num_display_definitions) {
 
+			// If we do not have a valid display type we simply wait for the next
+			// message
+			osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, osWaitForever);
+		} else {
 			if(re_init == 1) {
 				re_init = 0;
 				init_display(display_type);
 			}
-
 			update_display(display_type);
+
+			// Wait one second, then go into the next loop to update the display
 			osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, 1000);
-		} else {
-			osMessageQueueGet(Display_R_QueueHandle, &re_init, NULL, osWaitForever);
 		}
 	}
   /* USER CODE END Display_Task */
@@ -298,11 +290,12 @@ void RTC_Task(void *argument)
 /* USER CODE BEGIN Header_StateMachine_Task */
 
 /**
-* @brief Function implementing the StateMachine thread.
+* @brief Function implementing the StateMachine thread. This thread is responsible
+* for retrieving the charger info, writing the important information to the I2C
+* registers and then calling the state machine with the updated info.
 * @param argument: Not used
 * @retval None
 */
-//extern UBaseType_t uxTaskGetStackHighWaterMark( TaskHandle_t xTask );
 /* USER CODE END Header_StateMachine_Task */
 void StateMachine_Task(void *argument)
 {
@@ -310,9 +303,7 @@ void StateMachine_Task(void *argument)
 
 	HAL_StatusTypeDef ret_val;
 
-	get_charger_registers();
-
- 	// on first execution
+ 	// initialize charger on startup
 	ret_val = ch_init(&hi2c3);
 
 	/* Infinite loop */
@@ -320,24 +311,24 @@ void StateMachine_Task(void *argument)
 		uint16_t msg = 0;
 
 		if (hi2c3.State == HAL_I2C_STATE_READY) {
-			get_charger_registers();
-
 			// start ADC conversion
 			ret_val = ch_transfer_byte_to_register(&hi2c3, CH_CONV_ADC,
 					CH_CONV_ADC_START);
 
-			get_charger_registers();
-
 			if (ret_val == HAL_OK) {
 				osDelay(ch_conv_delay); // time for conversion, see 8.2.8 Battery Monitor on p.24
-				// Read values from charger
+
+				// Tell the charger that we want to read its registers
 				uint8_t reg = CH_STATUS;
 				ret_val = HAL_I2C_Master_Transmit(&hi2c3, CHARGER_ADDRESS, &reg, 1, ch_i2c_master_timeout);
+
 				if (ret_val == HAL_OK) {
-					// we now use blocking I2C communication since we are the master
+					// Read the charger registers into the array i2c_ch_BQ25895_register_reg
 					ret_val = HAL_I2C_Master_Receive(&hi2c3, CHARGER_ADDRESS, i2c_ch_BQ25895_register_reg,
 							sizeof(I2C_CH_BQ25895_Register), ch_i2c_master_timeout);
 					if(ret_val == HAL_OK) {
+						// Reading the registers was successful, extract information and write it
+						// to the I2C registers
 						i2c_status_register_8bit->charger_status = i2c_ch_BQ25895_register.ch_status;
 						uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.ch_bat_voltage);
 						i2c_status_register_16bit->ups_bat_voltage = batv;
@@ -350,7 +341,6 @@ void StateMachine_Task(void *argument)
 						i2c_status_register_8bit->charger_contact = true;
 					}
 
-					get_charger_registers();
 				} else if (ret_val == HAL_ERROR) { // Master Transmit Address
 					// This should never happen because we just did a successful
 					// transmit a second ago. We have to ignore this and hope for
@@ -362,19 +352,24 @@ void StateMachine_Task(void *argument)
 				// it to come online.
 			}
 		}
+
+		// Now we have the updated charger info and call the state machine
 		handle_state();
 
+		// Trigger an update for the display thread
 		osMessageQueuePut(Display_R_QueueHandle, &msg, 0, 0);
 
 		osDelay(ups_update_interval);
-
 	}
   /* USER CODE END StateMachine_Task */
 }
 
 /* USER CODE BEGIN Header_LED_Task */
 /**
-* @brief Function implementing the LED thread.
+* @brief Function implementing the LED thread. This thread receives patterns
+* in its queue and blinks the LED accordingly. Until the UPS gets a RGB LED
+* this only turns an LED on and off. The patters are defined in the source
+* file led_patterns.c.
 * @param argument: Not used
 * @retval None
 */
@@ -397,22 +392,31 @@ void LED_Task(void *argument)
 		status = osMessageQueueGet(LED_R_QueueHandle, &msg, NULL, waiting_time);
 		if (status == osOK) {
 			if(msg->iterations == 0) {
+				// If iterations is 0 then we turn off the background blinking
 				background = NULL;
 				current = NULL;
 			} else if(msg->iterations == 255) {
+				// If iterations is 0xFF then we use the blink pattern as the
+				// new current and background pattern
 				background = msg;
 				current = background;
 			} else {
 				current = msg;
 			}
 		} else {
+			// No new message, we choose the background pattern if it is set
 			current = background;
 		}
 
 		if(current != NULL) {
 			uint8_t iterations = current->iterations;
-			if(iterations == 0xFF) iterations = 1;
 
+			// We have a background pattern
+			if(iterations == 0xFF) {
+				iterations = 1;
+			}
+
+			// Iterate through the steps for # of iterations
 			for(uint8_t i = 0; i < iterations; i++) {
 				for(uint8_t s = 0; s < current->number_steps; s++) {
 					LED_Step step = ((LED_Step *)(current->steps))[s];
@@ -443,7 +447,11 @@ void LED_Task(void *argument)
 
 /* USER CODE BEGIN Header_Test_Task */
 /**
-* @brief Function implementing the Test thread.
+* @brief Function implementing the Test thread. This is an example task
+* implementing task communication via I2C, receiving data through its
+* queue, sending data through the associated callback test_callback.
+* Association is created in task_communication.c, where queue and
+* callback reference are stored in an array of tasks.
 * @param argument: Not used
 * @retval None
 */

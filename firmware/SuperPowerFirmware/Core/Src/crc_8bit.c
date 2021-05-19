@@ -3,6 +3,14 @@
  *
  *  Created on: Dec 10, 2020
  *      Author: jbaumann
+ *
+ * This file contains a calculation of a CRC based on the polynome used
+ * by Dallas/Maxim. This CRC is used in the communication between RPi
+ * and STM32.
+ * These methods calculate an 8-bit CRC based on the polynome
+ * (X^8+X^5+X^4+X^0).
+ * The variables here don't need to be volatile because they are only accessed
+ * during the interrupt in the I2C callback routines.
  */
 
 #include "main.h"
@@ -10,11 +18,8 @@
 
 
 /*
-   These method calculate an 8-bit CRC based on the polynome used for Dallas / Maxim
-   sensors (X^8+X^5+X^4+X^0).
-   The variables here don't need to be volatile because they are only accessed
-   during the interrupt in the I2C callback routines.
-*/
+ * This method adds a single byte to the CRC
+ */
 
 uint8_t addCRC(uint8_t crc, uint8_t n) {
 	for (int bit = 0; bit < 8; bit++) {
@@ -28,6 +33,10 @@ uint8_t addCRC(uint8_t crc, uint8_t n) {
 	return (crc & 0xFF);
 }
 
+/*
+ * This method iterates over the msg with len bytes and returns
+ * the CRC according to the Dallas polynome.
+ */
 uint8_t calcCRC(uint8_t reg, uint8_t *msg, uint8_t len) {
     uint8_t crc = addCRC(0, reg);
 

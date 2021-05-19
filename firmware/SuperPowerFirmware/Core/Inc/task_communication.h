@@ -27,6 +27,8 @@ osMessageQueueId_t LED_R_QueueHandle;
 osMessageQueueId_t RTC_R_QueueHandle;
 osMessageQueueId_t Test_R_QueueHandle;
 
+
+// TODO extract to task_communication.c
 uint8_t test_callback(uint8_t transfer[]);
 
 /*

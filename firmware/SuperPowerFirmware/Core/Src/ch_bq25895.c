@@ -3,6 +3,11 @@
  *
  *  Created on: Dec 26, 2020
  *      Author: jbaumann
+ *
+ *  This file contains functions to handle the BQ25895 charger IC.
+ *  This includes helper function to init the chip and to send data
+ *  to it, and conversion functions that calculate values from the
+ *  raw bits returned by the chip according to its datasheet.
  */
 
 #include "main.h"
@@ -74,7 +79,7 @@ uint16_t ch_convert_batv(uint8_t raw) {
  * Offset: 2.6V
  * Default: 2.6V (0000000)
  *
- *  VBUS[7] VBUS_GD - 0 no VBUS - 1 VBUS attached
+ * VBUS[7] VBUS_GD - 0 no VBUS - 1 VBUS attached
  * VBUSV[6] 6400mV
  * VBUSV[5] 3200mV
  * VBUSV[4] 1600mV
