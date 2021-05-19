@@ -62,10 +62,10 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PtPin */
-  GPIO_InitStruct.Pin = B1_Pin;
+  GPIO_InitStruct.Pin = BL_Trigger_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(BL_Trigger_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = nOP_Enable_Pin;
@@ -95,23 +95,12 @@ void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 2 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	/*
-	 * TODO Remove the following code and the pin configuration in the
-	 * .ioc file
-	 *
-	// This is either the blue button on the Nucleo board
-	// or the GPIO5/pin 29 on the RPi
-	if (GPIO_Pin == B1_Pin) {
-		// TODO Bootloader on button press remove?
-		if (i2c_config_register_8bit->enable_bootloader != 0) {
-			// TODO remove
-			// jumpToBootloader();
-		}
-		else {
-			// Raspberry signals shutdown?
-		}
+	// This is either the GPIO5/pin 29 on the RPi
+	// signalling that the RPi has shut down
+	// The RPi needs a dtoverlay for GPIO5 to do this
+	if (GPIO_Pin == BL_Trigger_Pin) {
+		// Raspberry signals shutdown?
 	}
-	*/
 
 	// The user button can be pressed to restart the RPi if turned off
 	// or to signal an action if it is running

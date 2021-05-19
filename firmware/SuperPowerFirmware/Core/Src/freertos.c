@@ -263,7 +263,6 @@ void Display_Task(void *argument)
   /* USER CODE END Display_Task */
 }
 
-
 /* USER CODE BEGIN Header_RTC_Task */
 /**
 * @brief Function implementing the RTC thread.

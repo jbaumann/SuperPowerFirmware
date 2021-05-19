@@ -89,9 +89,9 @@ void initializeTimerForRunTimeStats();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define B1_Pin GPIO_PIN_13
-#define B1_GPIO_Port GPIOC
-#define B1_EXTI_IRQn EXTI15_10_IRQn
+#define BL_Trigger_Pin GPIO_PIN_13
+#define BL_Trigger_GPIO_Port GPIOC
+#define BL_Trigger_EXTI_IRQn EXTI15_10_IRQn
 #define nOP_Enable_Pin GPIO_PIN_0
 #define nOP_Enable_GPIO_Port GPIOC
 #define USART_TX_LED0_Pin GPIO_PIN_2
