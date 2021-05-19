@@ -96,6 +96,7 @@ int main(void)
   MX_RTC_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
+
   // The RTC has to be initialized before we can read the registers
   restore_registers();
 
@@ -112,6 +113,8 @@ int main(void)
   configureTimerForRunTimeStats();
 #endif
 
+  // Reset the timeout counter and enable listening on our
+  // connection to the RPi
   reset_timeout();
   HAL_I2C_EnableListen_IT(&hi2c1);
 

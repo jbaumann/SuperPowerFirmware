@@ -3,6 +3,9 @@
  *
  *  Created on: 3 Jan 2021
  *      Author: jbaumann
+ *
+ * This file contains the definition of the config registers and the initial values for
+ * their contents.
  */
 
 #include"main.h"

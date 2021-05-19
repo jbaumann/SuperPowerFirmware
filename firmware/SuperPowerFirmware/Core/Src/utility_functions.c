@@ -3,6 +3,11 @@
  *
  *  Created on: Nov 22, 2020
  *      Author: jbaumann, Hector Manuel
+ *
+ * This file contains a few helper functions that have not found a place
+ * in other source files. This includes the function that jumps into the
+ * bootloader, debug output using SWO, and FreeRTOS configuration functions
+ * that provide additional runtime information.
  */
 
 #include <errno.h>

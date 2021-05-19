@@ -3,11 +3,14 @@
  *
  *  Created on: Jan 21, 2021
  *      Author: jbaumann
+ *
+ * This file contains the LED patterns used to signal different
+ * conditions of the UPS.
  */
 
 #include "main.h"
 #include "cmsis_os.h"
-#include "task_communication.h"
+#include "led_patterns.h"
 
 #define NUM_STEPS(steps) (sizeof(steps)/sizeof(LED_Step))
 

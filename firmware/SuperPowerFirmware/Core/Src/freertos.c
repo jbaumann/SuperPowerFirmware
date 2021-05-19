@@ -32,6 +32,7 @@
 #include "ch_bq25895.h"
 #include "rtc.h"
 #include "task_communication.h"
+#include "led_patterns.h"
 #include "ups_state.h"
 #include "rtc.h"
 #include "display.h"

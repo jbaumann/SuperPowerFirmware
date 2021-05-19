@@ -68,6 +68,9 @@ typedef struct {
 	};
 } I2C_Transaction;
 
+/*
+ * We use two distinct transaction variables, one for each supported I2C address
+ */
 I2C_Transaction rtc_transaction, ups_transaction;
 
 
@@ -315,6 +318,7 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
  * to the buffer
  *
  *  register_number the register value sent by the RPi
+ *  tdata reference for the buffer to which the data is written
  */
 uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tdata[]) {
 	uint8_t len = 1; // 8bit by default
@@ -399,7 +403,7 @@ uint8_t i2c_writeRegisterToBuffer(enum I2C_Register register_number, uint8_t tda
  *
  */
 void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t len) {
-	uint8_t reg_has_changed = false;
+	uint8_t register_has_changed = false;
 
 	// identify the addressed struct and copy the value
 	if (register_number < STATUS_8BIT_OFFSET) {
@@ -408,7 +412,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 		uint8_t reg = register_number - CONFIG_8BIT_OFFSET;
 		if(reg < i2c_config_reg_8bit_size) {
 			i2c_config_register_8bit_reg[reg] = data[0];
-			reg_has_changed = true;
+			register_has_changed = true;
 		}
 	} else if (register_number < CONFIG_16BIT_OFFSET) {
 		/* the RPi does not set values in the STATUS_8BIT struct */
@@ -420,7 +424,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 			uint16_t *val = (uint16_t*) (data);
 			i2c_config_register_16bit_reg[reg] = val[0];
 
-			reg_has_changed = true;
+			register_has_changed = true;
 		}
 	} else if (register_number < (enum I2C_Register)SPECIAL_16BIT_OFFSET) {
 		/* the RPi does not set values in the STATUS_16BIT struct */
@@ -463,7 +467,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 			}
 		}
 	}
-	if(reg_has_changed) {
+	if(register_has_changed) {
 		backup_registers();
 	}
 	// check for RTC register change and trigger re-init
@@ -486,6 +490,7 @@ void i2c_writeBufferToRegister(uint8_t register_number, uint8_t data[], uint8_t 
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
 		uint16_t AddrMatchCode) {
 
+	// reset the counter since we now know the RPi is alive
 	i2c_triggered_ups_state_change();
 
 	i2c_primary_address = (hi2c->Init.OwnAddress1 == AddrMatchCode);
@@ -542,31 +547,8 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 
 
 /*
- * This callback is called when the data from the charger
- * has been successfully received. We copy the relevant
- * information and turn the listen mode back on
- */
-/*
- * We now do a blocking call in the FreeRTOS task
-void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-	if(hi2c == &hi2c3) {
-		i2c_status_register_8bit->val.charger_status = i2c_ch_BQ25895_register.val.ch_status;
-		uint16_t batv = ch_convert_batv(i2c_ch_BQ25895_register.val.ch_bat_voltage);
-		i2c_status_register_16bit->val.bat_voltage = batv;
-		uint16_t vbus_v = ch_convert_vbus(i2c_ch_BQ25895_register.val.ch_vbus_voltage);
-		i2c_status_register_16bit->val.vbus_voltage = vbus_v;
-		uint16_t ch_current = ch_convert_charge_current(i2c_ch_BQ25895_register.val.ch_charge_current);
-		i2c_status_register_16bit->val.charge_current = ch_current;
-
-		// ok, contact has been established, we can use the values
-		i2c_status_register_8bit->val.charger_contact = true;
-	}
-}
- */
-
-
-/*
- * We restart the I2C listening mode
+ * This callback is called as soon as the data transfer in DMA mode is
+ * finished. After sending the data onward we restart the I2C listening mode
  */
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 
@@ -596,20 +578,17 @@ void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
 
 
 /*
- * The following callbacks simply set the i2c_in_progress
- * value back to false in case something goes wrong.
+ * The following callbacks simply restart the listening
+ * mode in case something went wrong.
  */
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
-//	ups_transaction.i2c_in_progress = false;
 	HAL_I2C_EnableListen_IT(&hi2c1);
 }
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
-//	ups_transaction.i2c_in_progress = false;
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
 }
 void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c) {
-//	ups_transaction.i2c_in_progress = false;
 	HAL_I2C_EnableListen_IT(&hi2c1);
 }
 

@@ -3,26 +3,23 @@
  *
  *  Created on: 17 Jan 2021
  *      Author: jbaumann
+ *
+ * The state variable encapsulates the all-over state of the system (ATTiny and RPi
+ * together).
+ * The possible states are:
+ *  RUNNING_STATE       -  0 - the system is running normally
+ *  UNCLEAR_STATE       -  1 - the system has been reset and is unsure about its state
+ *  WARN_TO_RUNNING     -  2 - the system transitions from warn state to running state
+ *  SHUTDOWN_TO_RUNNING -  4 - the system transitions from shutdown state to running state
+ *  WARN_STATE          -  8 - the system is in the warn state
+ *  WARN_TO_SHUTDOWN    - 16 - the system transitions from warn state to shutdown state
+ *  SHUTDOWN_STATE      - 32 - the system is in the shutdown state
+ *  They are ordered in a way that allows to later check for the severity of the state by
+ *  e.g., "if(state <= WARN_STATE)"
+ *  This function implements the state changes between these states, during the normal
+ *  execution but in the case of a reset as well. For this we have to take into account that
+ *  the only information we might have is the current voltage and we are in the RUNNING_STATE.
  */
-
-
-/*
-   The state variable encapsulates the all-over state of the system (ATTiny and RPi
-   together).
-   The possible states are:
-    RUNNING_STATE       -  0 - the system is running normally
-    UNCLEAR_STATE       -  1 - the system has been reset and is unsure about its state
-    WARN_TO_RUNNING     -  2 - the system transitions from warn state to running state
-    SHUTDOWN_TO_RUNNING -  4 - the system transitions from shutdown state to running state
-    WARN_STATE          -  8 - the system is in the warn state
-    WARN_TO_SHUTDOWN    - 16 - the system transitions from warn state to shutdown state
-    SHUTDOWN_STATE      - 32 - the system is in the shutdown state
-    They are ordered in a way that allows to later check for the severity of the state by
-    e.g., "if(state <= WARN_STATE)"
-    This function implements the state changes between these states, during the normal
-    execution but in the case of a reset as well. For this we have to take into account that
-    the only information we might have is the current voltage and we are in the RUNNING_STATE.
-*/
 
 #include <stdbool.h>
 
@@ -30,10 +27,13 @@
 #include "ups_state.h"
 #include "i2c_register.h"
 #include "task_communication.h"
+#include "led_patterns.h"
 #include "gpio.h"
 #include "i2c.h"
 
+// This variable contains the milliseconds since the last contact
 uint32_t millis_last_contact               = 0;
+// This variable is used to communicate with the RPI regarding shutdowns
 volatile uint8_t ups_state_should_shutdown = shutdown_cause_none;
 
 
@@ -94,7 +94,7 @@ void voltage_dependent_state_change(uint16_t seconds_since_last_contact) {
  * Act on the current state
  */
 void act_on_state_change() {
-	// This is placed before the general check of all stages as to
+	// This is placed before the general check of all stages so as to
 	// not duplicate the code of the shutdown_state
 	if (i2c_status_register_8bit->ups_state == ups_warn_to_shutdown) {
 		// immediately turn off the system if force_shutdown is set
@@ -164,12 +164,23 @@ void act_on_state_change() {
 	}
 }
 
+/*
+ * This helper method calculates the seconds since the last contact with the RPi
+ */
 uint16_t calc_seconds_since_last_contact() {
 	uint16_t seconds_since_last_contact = (HAL_GetTick() - millis_last_contact)
 			/ 1000;
 	return seconds_since_last_contact;
 }
 
+/*
+ * This method is the central state machine handling method. It assumes that
+ * the charger information has been read beforehand. After calculating the
+ * seconds since last contacts it first calls the method that determines
+ * state change coming from the new voltages, blinks the LED if the RPi
+ * is signaled to shut down and lastly calls the method that acts on the
+ * state changes (e.g. turns off the UPS).
+ */
 void handle_state() {
 	uint16_t seconds_since_last_contact = calc_seconds_since_last_contact();
 
