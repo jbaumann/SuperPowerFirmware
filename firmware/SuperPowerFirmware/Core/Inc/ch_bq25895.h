@@ -4,13 +4,19 @@
  *
  *  Created on: Dec 26, 2020
  *      Author: jbaumann
+ *
+ * This file contains the structure definitions that
+ * allow to interpret the data received from the
+ * charger IC BQ25895
  */
 
 #ifndef INC_CH_BQ25895_H_
 #define INC_CH_BQ25895_H_
 
 /*
- * Intervals for communication with the charger
+ * Intervals for communication with the charger.
+ * Since these values will be inlined by the compiler
+ * we define them as static const to not need any memory.
  */
 static const uint16_t ch_i2c_master_timeout =  1000;  // timeout in milliseconds
 static const uint16_t ch_conv_delay         =  1000;  // time for conversion, see 8.2.8 Battery Monitor on p.24
@@ -129,8 +135,6 @@ typedef struct _I2C_CH_BQ25895_Register {
 		__IO uint8_t ch_charge_current;
 	};
 } __attribute__((__packed__)) I2C_CH_BQ25895_Register;
-//	uint8_t xreg[sizeof(struct _I2C_CH_BQ25895_Register)];
-//} I2C_CH_BQ25895_Register;
 
 /*
  * The actual struct declaration

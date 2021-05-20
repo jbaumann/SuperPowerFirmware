@@ -41,7 +41,12 @@ extern "C" {
 /* USER CODE BEGIN ET */
 
 /*
- * Our version number - used by the daemon to ensure that the major number is equal between firmware and daemon
+ * Our version number - used by the daemon to ensure
+ * that the major number is equal between firmware and daemon.
+ * In addition a hashed version of MAJOR and MINOR version are
+ * used to create a version byte for the persistent storage. If
+ * this differs the firmware falls back to the initial values
+ * for its configuration (see below).
  */
 enum VersionNumber {
 	MAJOR = 1, MINOR = 0, PATCH = 7,
@@ -78,10 +83,6 @@ void Error_Handler(void);
 
 void jumpToBootloader();
 void initializeTimerForRunTimeStats();
-/*
-#define debug_print(fmt, ...) \
-            do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
- */
 
 #define debug_print(fmt, ...) \
         do { if (DEBUG) fprintf(stdout, "%s:%d:%s(): " fmt, __FILE__, \

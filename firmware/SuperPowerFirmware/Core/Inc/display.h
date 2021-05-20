@@ -3,6 +3,9 @@
  *
  *  Created on: May 15, 2021
  *      Author: jbaumann
+ *
+ * This file contains the function prototypes
+ * for the use of the display
  */
 
 #ifndef INC_DISPLAY_H_

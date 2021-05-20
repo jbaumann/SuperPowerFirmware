@@ -3,6 +3,10 @@
  *
  *  Created on: 17 Jan 2021
  *      Author: jbaumann
+ *
+ * This file contains the function prototypes for the state machine
+ * and the enums modeling the state of the UPS and of a shutdown
+ * condition.
  */
 
 #ifndef INC_UPS_STATE_H_
@@ -17,7 +21,7 @@ void i2c_triggered_ups_state_change();
 void handle_state() ;
 void reset_timeout();
 /*
-   Values modelling the different states the system can be in
+   Values modeling the different states the system can be in
 */
 enum UPS_State {
   ups_running_state                 = 0,       // the system is running normally

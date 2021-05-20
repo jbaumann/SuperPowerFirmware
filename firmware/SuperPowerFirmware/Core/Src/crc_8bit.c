@@ -16,6 +16,14 @@
 #include "main.h"
 #include "crc_8bit.h"
 
+/*
+ * These values define the polynome to be used
+ * and the seed value, both are taken from
+ * the Dallas / Maxim algorithm for OneWire.
+ */
+const uint8_t CRC8INIT = 0x00;                  // The initalization value used for the CRC calculation
+const uint8_t CRC8POLY = 0x31;                  // The CRC8 polynome used: X^8+X^5+X^4+X^0
+
 
 /*
  * This method adds a single byte to the CRC

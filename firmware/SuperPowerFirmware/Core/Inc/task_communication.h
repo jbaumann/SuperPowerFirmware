@@ -3,6 +3,10 @@
  *
  *  Created on: Dec 11, 2020
  *      Author: jbaumann
+ *
+ * This file contains the message queue definitions and
+ * the structure definitions for everything having to do
+ * with task communication via I2C
  */
 
 #ifndef INC_TASK_COMMUNICATION_H_
@@ -28,7 +32,9 @@ osMessageQueueId_t RTC_R_QueueHandle;
 osMessageQueueId_t Test_R_QueueHandle;
 
 
-// TODO extract to task_communication.c
+/*
+ * The callbacks provided by the tasks for the I2C communication
+ */
 uint8_t test_callback(uint8_t transfer[]);
 
 /*
@@ -55,14 +61,10 @@ typedef struct {
  * work.
  */
 static const Task_Communication task_communication[] = {
-		{
-			.queue = &Test_R_QueueHandle,
-			.callback = test_callback,                   // _EXTRACT_TASK_COMM_
-		},
-		{
-			.queue = &LED_R_QueueHandle,
-			.callback = NULL,                            // _EXTRACT_TASK_COMM_
-		},
+	{
+		.queue = &Test_R_QueueHandle,
+		.callback = test_callback,                   // _EXTRACT_TASK_COMM_
+	},
 };
 
 /*

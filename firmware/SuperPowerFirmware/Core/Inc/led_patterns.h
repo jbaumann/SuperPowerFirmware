@@ -3,16 +3,15 @@
  *
  *  Created on: May 19, 2021
  *      Author: jbaumann
+ *
+ * LED Queue Message definitions
+ * Here are all definitions used to generate LED patterns signaling different
+ * conditions to the user.
  */
 
 #ifndef INC_LED_PATTERNS_H_
 #define INC_LED_PATTERNS_H_
 
-/*****************************************************************************
- * LED Queue Message definitions
- * Here are all definitions used to generate LED patterns signaling different
- * conditions to the user.
- *****************************************************************************/
 
 typedef struct {
 	union {
