@@ -152,6 +152,18 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 }
 /* USER CODE END 4 */
 
+/* USER CODE BEGIN PREPOSTSLEEP */
+__weak void PreSleepProcessing(uint32_t ulExpectedIdleTime)
+{
+/* place for user code */
+}
+
+__weak void PostSleepProcessing(uint32_t ulExpectedIdleTime)
+{
+/* place for user code */
+}
+/* USER CODE END PREPOSTSLEEP */
+
 /**
   * @brief  FreeRTOS initialization
   * @param  None
