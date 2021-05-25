@@ -149,7 +149,7 @@ if not include_dirs:
     raise SCons.Errors.BuildError(
         errstr="%s Error: Cannot read include directories from project file "
         ".cproject in directory '%s'" % (log_name, project_dir))
-print(include_dirs)
+
 #################################################
 # We now try to extract the uC-specific build
 # flags and add the ones we know are needed.
