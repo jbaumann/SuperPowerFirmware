@@ -243,6 +243,6 @@ RCC.APB1Freq_Value=50000000
 Dma.I2C1_RX.0.Instance=DMA1_Stream0
 PC0.Locked=true
 ProjectManager.DeviceId=STM32F411RETx
-ProjectManager.LibraryCopy=1
+ProjectManager.LibraryCopy=2
 PA3.GPIO_Label=USART_RX
 isbadioc=false
