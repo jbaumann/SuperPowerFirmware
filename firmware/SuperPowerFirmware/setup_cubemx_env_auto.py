@@ -1,5 +1,5 @@
 # Author: Joachim Baumann
-# Version: 1.0.1
+# Version: 1.0.2
 #
 # This script is based on the information for advanced scripting provided
 # by platformio
@@ -21,18 +21,17 @@ log_name = "SETUP_CUBEMX"
 lib_directory = "lib/"
 
 # The project option containing the directory in which CubeMX resides
-try:
-    repository_location = env.GetProjectOption("custom_repo_location")
-except:
-    repository_location = "~"
-    pass
+# try:
+#    repository_location = env.GetProjectOption("custom_repo_location")
+# except:
+#    repository_location = "~"
+#    pass
+#repository_location = path.expanduser(repository_location)
+# print("%s: Using the following repository location: '%s'"
+#      % (log_name, repository_location))
 
 # set the project source dir
-env["PROJECT_SRC_DIR"] = path.abspath("./")
-
-repository_location = path.expanduser(repository_location)
-print("%s: Using the following repository location: '%s'"
-      % (log_name, repository_location))
+env["PROJECT_SRC_DIR"] = project_dir
 
 # We simply take the first extra library dependency
 try:
@@ -65,10 +64,30 @@ if not path.exists(lib_directory):
     mkdir(lib_directory)
 mkdir(linked_resources_dir)
 
-for linked_resource in project_root.findall(".//linkedResources/link/locationURI"):
-    resource = re.sub(r"PARENT-\d+-PROJECT_LOC", "", linked_resource.text)
-    if not resource.startswith(repository_location):
-        resource = repository_location + resource
+# Collect the virtual dirs so that we later know not to add them
+virtual_dirs = []
+for linked_resource in project_root.findall(".//linkedResources/link"):
+    # Retrieve the complete link
+    linkedName = linked_resource.find(".//name").text
+    linkedURI = linked_resource.find(".//locationURI").text
+    # It's a virtual folder?
+    if linkedURI == "virtual:/virtual":
+        # Add to virtual_dirs in case of virtual folder
+        virtual_dirs.append(linkedName)
+        continue
+    # It's a relative path?
+    m = re.match("PARENT-(\d+)-PROJECT_LOC(.*)$", linkedURI)
+    if m is not None:
+        parent_level = int(m.group(1))
+        current_dir = project_dir + "/.." * parent_level
+        resource = path.abspath(current_dir + m.group(2))
+        # print(resource)
+    else:
+        # we have a path type that we haven't seen yet
+        raise SCons.Errors.BuildError(
+            errstr="%s Error: Unexpected relative path type '%s'"
+            % (log_name, linkedURI))
+
     try:
         resource_name = path.basename(resource)
         link_name = linked_resources_dir + "/" + resource_name
@@ -105,7 +124,9 @@ config = cproject_root.find(".//configuration[@name='Debug']")
 for source_entry in config.findall("sourceEntries/entry"):
     directory = source_entry.get('name')
     if directory != "Core":
-        cubemx_directories.add(directory)
+        # Add non-virtual folders
+        if directory not in virtual_dirs:
+            cubemx_directories.add(directory)
 if cubemx_directories:
     print("%s: Using the following source directories: 'Core, %s'"
           % (log_name, ', '.join(cubemx_directories)))
@@ -134,13 +155,14 @@ for cubemx_dir in cubemx_directories:
 #################################################
 tool_chain = config.find("./folderInfo/toolChain")
 
-ws_replacement = env["PROJECT_SRC_DIR"] + '/\\1'
-print(ws_replacement)
+ws_replacement = re.escape(project_dir) + '/\\1'
+
 for include_entry in tool_chain.findall(".//option[@superClass='com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.option.includepaths']/listOptionValue"):
     inc_dir = include_entry.get('value')
     # add project-related paths e.g., Middleware-directores
     inc_dir = re.sub(
         '"\$\{workspace_loc:/\$\{ProjName\}(.*)}"', ws_replacement, inc_dir)
+    # Fix references to Core
     inc_dir = inc_dir.replace("../", "", 1)
     # print(inc_dir)
     inc_dir = "-I" + inc_dir
@@ -161,6 +183,16 @@ build_flags = [
     # we always choose thumb mode with STM32
     "-mthumb",
 ]
+# additional flags for the compiler only
+cc_only_flags = [
+    # These are set by platformio, see
+    # PIO_FRAMEWORK_ARDUINO_STANDARD_LIB
+    # additional ones can be added using build flags
+]
+
+# additional flags for the linker only
+ld_only_flags = [
+]
 
 # extract the cpu type from the board
 board_config = env.BoardConfig()
@@ -171,30 +203,28 @@ m_flags = ['-mcpu=%s' % cpu]
 option_mapping = {
     "floatabi": "float-abi",
 }
+cc_only_option_mapping = {
+    "runtimelibrary_c"
+}
+
 for option in tool_chain.findall("option[@valueType='enumerated']"):
     superClass = option.get("superClass")
     value = option.get("value").replace(superClass + ".value.", "")
     m_flag = superClass.replace(
         "com.st.stm32cube.ide.mcu.gnu.managedbuild.option.", "")
+    # If the eclipse notation of the flag differs we correct that
     if m_flag in option_mapping:
         m_flag = option_mapping[m_flag]
-    m_flags += ['-m%s=%s' % (m_flag, value)]
+    # Add the flag to the list of flags
+    if m_flag in cc_only_option_mapping:
+        print("Removing %s=%s" % (mflag, value))
+    else:
+        m_flags += ['-m%s=%s' % (m_flag, value)]
 
 build_flags += m_flags
 print("%s: Adding the following build flags: '%s'"
       % (log_name, ', '.join(build_flags)))
 
-# additional flags for the compiler only
-cc_only_flags = [
-    # These are already set by platformio, see
-    # PIO_FRAMEWORK_ARDUINO_STANDARD_LIB
-    # "--specs=nano.specs",
-    # "--specs=nosys.specs",
-]
-
-# additional flags for the linker only
-ld_only_flags = [
-]
 
 #################################################
 # Get the ld script from .cproject
