@@ -3,4 +3,4 @@
 /.vscode/
 /lib/
 /Drivers/
-/Middlewares/
+/Middlewares/Third_Party/FreeRTOS/

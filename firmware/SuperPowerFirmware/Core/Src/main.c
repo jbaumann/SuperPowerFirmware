@@ -111,6 +111,13 @@ int main(void)
 #ifdef FREERTOS_TOTAL_RUNTIME_TIMER
   initializeTimerForRunTimeStats();
   configureTimerForRunTimeStats();
+
+#if (configUSE_TRACE_FACILITY == 1)
+  //this enables the trace streaming to the ITM port
+  //but it requires the configUSE_TRACE_FACILITY flag
+  //enabled on the FreeRTOSConfig.h flag
+  vTraceEnable(TRC_START);
+#endif
 #endif
 
   // Reset the timeout counter and enable listening on our
