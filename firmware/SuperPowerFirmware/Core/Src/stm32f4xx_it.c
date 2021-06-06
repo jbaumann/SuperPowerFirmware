@@ -69,6 +69,8 @@ volatile void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
      away as the variables never actually get used.  If the debugger won't show the
      values of the variables, make them global my moving their declaration outside
      of this function. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
   volatile uint32_t r0;
   volatile uint32_t r1;
   volatile uint32_t r2;
@@ -77,7 +79,7 @@ volatile void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
   volatile uint32_t lr; /* Link register. */
   volatile uint32_t pc; /* Program counter. */
   volatile uint32_t psr;/* Program status register. */
-
+#pragma GCC diagnostic pop
   r0 = pulFaultStackAddress[ 0 ];
   r1 = pulFaultStackAddress[ 1 ];
   r2 = pulFaultStackAddress[ 2 ];
